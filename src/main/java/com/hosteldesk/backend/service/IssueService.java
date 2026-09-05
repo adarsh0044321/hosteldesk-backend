@@ -192,8 +192,19 @@ public class IssueService {
         Issue issue = issueRepository.findById(issueId)
                 .orElseThrow(() -> new ResourceNotFoundException("Issue not found with id: " + issueId));
 
-        Department dept = departmentRepository.findById(request.getDepartmentId())
-                .orElseThrow(() -> new ResourceNotFoundException("Department not found: " + request.getDepartmentId()));
+        Department dept = null;
+        if (request.getDepartmentId() != null) {
+            dept = departmentRepository.findById(request.getDepartmentId()).orElse(null);
+        }
+        if (dept == null && issue.getAssignedDepartment() != null) {
+            dept = issue.getAssignedDepartment();
+        }
+        if (dept == null) {
+            dept = departmentRepository.findAll().stream().findFirst().orElse(null);
+        }
+        if (dept == null) {
+            throw new ResourceNotFoundException("No departments configured in the system.");
+        }
 
         User staff = null;
         if (request.getStaffId() != null) {

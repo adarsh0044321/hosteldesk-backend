@@ -7,7 +7,7 @@ public class LoginRequest {
     @JsonAlias({"institute_id", "instituteCode", "instituteId"})
     private String instituteCode;
 
-    @JsonAlias({"email", "username", "institutionalId", "studentId", "staffId", "adminId", "wardenId"})
+    @JsonAlias({"email", "username", "institutionalId", "studentId", "staffId", "adminId", "wardenId", "identifier"})
     private String emailOrInstitutionalId;
 
     private String email;

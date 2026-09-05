@@ -32,6 +32,7 @@ public class AuthService {
     private final HostelRepository hostelRepository;
     private final InstituteRepository instituteRepository;
     private final CampusRepository campusRepository;
+    private final com.hosteldesk.backend.repository.DepartmentRepository departmentRepository;
     private final PasswordResetRequestRepository passwordResetRequestRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
@@ -42,6 +43,7 @@ public class AuthService {
                        HostelRepository hostelRepository,
                        InstituteRepository instituteRepository,
                        CampusRepository campusRepository,
+                       com.hosteldesk.backend.repository.DepartmentRepository departmentRepository,
                        PasswordResetRequestRepository passwordResetRequestRepository,
                        PasswordEncoder passwordEncoder,
                        JwtTokenProvider tokenProvider,
@@ -51,6 +53,7 @@ public class AuthService {
         this.hostelRepository = hostelRepository;
         this.instituteRepository = instituteRepository;
         this.campusRepository = campusRepository;
+        this.departmentRepository = departmentRepository;
         this.passwordResetRequestRepository = passwordResetRequestRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenProvider = tokenProvider;
@@ -130,7 +133,7 @@ public class AuthService {
         institute.setName(request.getInstituteName());
         institute.setType(request.getInstituteType() != null ? request.getInstituteType() : "UNIVERSITY");
         institute.setEmail(request.getInstituteEmail());
-        institute.setContactNumber(request.getContactNumber());
+        institute.setContactNumber(request.getContactNumber() != null && !request.getContactNumber().trim().isEmpty() ? request.getContactNumber().trim() : "+91 11 2766 7722");
         institute.setStatus("ACTIVE");
         Institute savedInstitute = instituteRepository.save(institute);
 
@@ -141,17 +144,40 @@ public class AuthService {
         campus.setName("Main Campus");
         campusRepository.save(campus);
 
-        // Create Institute Administrator
+        // Create default hostel for campus
+        Hostel defaultHostel = new Hostel(null, savedInstitute, campus, "Main Residence Hall", "Campus Wing A", "Primary residence hostel", true);
+        hostelRepository.save(defaultHostel);
+
+        // Create default maintenance departments for newly registered institute
+        departmentRepository.save(new Department(null, "PLUMBING", "Plumbing Crew", "Plumbing and water fixtures", true));
+        departmentRepository.save(new Department(null, "ELECTRICAL", "Electrical Facilities", "Power, lights and electrical safety", true));
+        departmentRepository.save(new Department(null, "GENERAL", "Facilities & Maintenance", "General repairs and carpentry", true));
+
+        // Create Institute Administrator with guaranteed unique institutionalId
+        String adminInstId = request.getAdminId();
+        if (adminInstId == null || adminInstId.trim().isEmpty() || "ADM-001".equalsIgnoreCase(adminInstId)) {
+            adminInstId = code + "-ADMIN";
+        }
+        if (userRepository.existsByInstitutionalId(adminInstId)) {
+            adminInstId = code + "-ADMIN-" + UUID.randomUUID().toString().substring(0, 4).toUpperCase();
+        }
+
         User admin = new User();
         admin.setFullName(request.getAdminName());
         admin.setEmail(request.getAdminEmail());
-        admin.setInstitutionalId(request.getAdminId());
+        admin.setInstitutionalId(adminInstId);
         admin.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         admin.setRole(Role.INSTITUTE_ADMIN);
         admin.setStatus(AccountStatus.ACTIVE);
         admin.setInstitute(savedInstitute);
         admin.setCampus(campus);
-        userRepository.save(admin);
+        admin.setHostel(defaultHostel);
+        admin.setNeedsPasswordChange(false);
+        try {
+            userRepository.save(admin);
+        } catch (Exception ex) {
+            throw new BadRequestException("Registration conflict: could not provision administrator account. " + ex.getMessage());
+        }
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(admin.getEmail(), request.getPassword())

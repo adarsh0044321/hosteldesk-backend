@@ -209,6 +209,57 @@ public class DataInitializer implements CommandLineRunner {
             userRepository.save(admin);
         }
 
+        // 7. Custom JAI Institute & Profile
+        Institute jaiInstitute = instituteRepository.findByCode("JAI")
+                .orElseGet(() -> {
+                    Institute inst = new Institute(
+                            null, "JAI", "JAI Campus Institute",
+                            "UNIVERSITY", "adminjai@campus.edu", "+91 98765 00001", "ACTIVE"
+                    );
+                    return instituteRepository.save(inst);
+                });
+
+        Campus jaiCampus = campusRepository.findByInstituteId(jaiInstitute.getId()).stream()
+                .findFirst()
+                .orElseGet(() -> {
+                    Campus c = new Campus(null, jaiInstitute, "MAIN", "JAI Main Campus");
+                    return campusRepository.save(c);
+                });
+
+        Hostel jaiHostel = hostelRepository.findByInstituteId(jaiInstitute.getId()).stream()
+                .findFirst()
+                .orElseGet(() -> {
+                    Hostel h = new Hostel(null, jaiInstitute, jaiCampus, "JAI Residence Hall 1", "Main Quad", "Primary campus hostel", true);
+                    return hostelRepository.save(h);
+                });
+
+        Department jaiPlumbing = getOrCreateDepartment("PLUMBING", "Plumbing & Sanitation", "Water supply and fittings", jaiInstitute);
+        Department jaiElectrical = getOrCreateDepartment("ELECTRICAL", "Electrical & Facilities", "Power and fixtures", jaiInstitute);
+        Department jaiGeneral = getOrCreateDepartment("GENERAL", "Facilities & Maintenance", "General maintenance operations", jaiInstitute);
+
+        createRoutingRuleIfNotExists("PLUMBING", jaiPlumbing, "P2_HIGH", jaiInstitute);
+        createRoutingRuleIfNotExists("ELECTRICAL", jaiElectrical, "P1_URGENT", jaiInstitute);
+        createRoutingRuleIfNotExists("GENERAL", jaiGeneral, "P3_MEDIUM", jaiInstitute);
+
+        User adminJai = userRepository.findByEmail("adminjai@campus.edu")
+                .or(() -> userRepository.findByInstituteCodeAndInstitutionalId("JAI", "adminjai"))
+                .orElseGet(() -> {
+                    User u = new User(
+                            null, "Admin Jai", "adminjai@campus.edu", "+91 98765 00001", "adminjai",
+                            passwordEncoder.encode("adminjai"), Role.INSTITUTE_ADMIN, AccountStatus.ACTIVE,
+                            jaiHostel, null, null
+                    );
+                    u.setInstitute(jaiInstitute);
+                    u.setCampus(jaiCampus);
+                    u.setNeedsPasswordChange(false);
+                    return userRepository.save(u);
+                });
+        if (adminJai.getInstitute() == null) {
+            adminJai.setInstitute(jaiInstitute);
+            adminJai.setCampus(jaiCampus);
+            userRepository.save(adminJai);
+        }
+
         // Development-only seed accounts (admin / admin, student / student)
         if (seedDemoData) {
             userRepository.findByInstitutionalId("admin")
