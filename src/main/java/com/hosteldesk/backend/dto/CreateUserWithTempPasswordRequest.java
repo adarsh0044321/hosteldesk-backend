@@ -21,6 +21,7 @@ public class CreateUserWithTempPasswordRequest {
     private Long departmentId;
     private String roomNumber;
     private String blockName;
+    private String batch;
 
     public CreateUserWithTempPasswordRequest() {}
 
@@ -50,4 +51,7 @@ public class CreateUserWithTempPasswordRequest {
 
     public String getBlockName() { return blockName; }
     public void setBlockName(String blockName) { this.blockName = blockName; }
+
+    public String getBatch() { return batch; }
+    public void setBatch(String batch) { this.batch = batch; }
 }

@@ -9,9 +9,12 @@ public class HostelDto {
     private String description;
     private Boolean active;
     private String campusName;
+    private Long campusId;
     private long studentCount;
+    private Long wardenId;
     private String wardenName;
     private String wardenPhone;
+    private boolean wardenAssigned;
     private long openIssuesCount;
     private long resolvedIssuesCount;
     private long totalIssuesCount;
@@ -35,6 +38,7 @@ public class HostelDto {
         dto.setDescription(hostel.getDescription());
         dto.setActive(hostel.getActive());
         if (hostel.getCampus() != null) {
+            dto.setCampusId(hostel.getCampus().getId());
             dto.setCampusName(hostel.getCampus().getName());
         }
         return dto;
@@ -72,6 +76,15 @@ public class HostelDto {
 
     public long getResolvedIssuesCount() { return resolvedIssuesCount; }
     public void setResolvedIssuesCount(long resolvedIssuesCount) { this.resolvedIssuesCount = resolvedIssuesCount; }
+
+    public Long getCampusId() { return campusId; }
+    public void setCampusId(Long campusId) { this.campusId = campusId; }
+
+    public Long getWardenId() { return wardenId; }
+    public void setWardenId(Long wardenId) { this.wardenId = wardenId; }
+
+    public boolean isWardenAssigned() { return wardenAssigned; }
+    public void setWardenAssigned(boolean wardenAssigned) { this.wardenAssigned = wardenAssigned; }
 
     public long getTotalIssuesCount() { return totalIssuesCount; }
     public void setTotalIssuesCount(long totalIssuesCount) { this.totalIssuesCount = totalIssuesCount; }

@@ -28,5 +28,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
     long countByHostelIdAndRole(Long hostelId, Role role);
     Optional<User> findFirstByHostelIdAndRole(Long hostelId, Role role);
     List<User> findByHostelIdAndRole(Long hostelId, Role role);
+    List<User> findByHostelId(Long hostelId);
     List<User> findByInstituteIdAndDepartmentId(Long instituteId, Long departmentId);
 }

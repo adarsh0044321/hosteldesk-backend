@@ -92,6 +92,12 @@ public class Issue {
     @Column(name = "verified_at")
     private ZonedDateTime verifiedAt;
 
+    @Column(name = "warden_view_count")
+    private Integer wardenViewCount = 0;
+
+    @Column(name = "warden_viewed_at")
+    private ZonedDateTime wardenViewedAt;
+
     public Issue() {}
 
     @PreUpdate
@@ -173,4 +179,10 @@ public class Issue {
 
     public ZonedDateTime getVerifiedAt() { return verifiedAt; }
     public void setVerifiedAt(ZonedDateTime verifiedAt) { this.verifiedAt = verifiedAt; }
+
+    public Integer getWardenViewCount() { return wardenViewCount != null ? wardenViewCount : 0; }
+    public void setWardenViewCount(Integer wardenViewCount) { this.wardenViewCount = wardenViewCount; }
+
+    public ZonedDateTime getWardenViewedAt() { return wardenViewedAt; }
+    public void setWardenViewedAt(ZonedDateTime wardenViewedAt) { this.wardenViewedAt = wardenViewedAt; }
 }

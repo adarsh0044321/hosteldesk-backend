@@ -212,13 +212,20 @@ public class IssueService {
         return issues.stream().map(IssueDto::fromEntity).collect(Collectors.toList());
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public IssueDetailDto getIssueDetail(Long issueId, UserPrincipal principal) {
         Issue issue = issueRepository.findById(issueId)
                 .orElseThrow(() -> new ResourceNotFoundException("Issue not found with id: " + issueId));
 
         if (principal.getRole() == Role.STUDENT && !issue.getReportedBy().getId().equals(principal.getId())) {
             throw new ForbiddenException("Access Denied: You are not authorized to view another student's complaint.");
+        }
+
+        if (principal.getRole() == Role.WARDEN) {
+            int currentViews = issue.getWardenViewCount() != null ? issue.getWardenViewCount() : 0;
+            issue.setWardenViewCount(currentViews + 1);
+            issue.setWardenViewedAt(ZonedDateTime.now());
+            issue = issueRepository.save(issue);
         }
 
         return IssueDetailDto.fromEntity(issue);

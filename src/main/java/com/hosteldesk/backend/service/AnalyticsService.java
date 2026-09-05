@@ -18,17 +18,20 @@ public class AnalyticsService {
     private final IssueRepository issueRepository;
     private final DepartmentRepository departmentRepository;
     private final UserRepository userRepository;
+    private final HostelRepository hostelRepository;
     private final InfrastructureInsightRepository insightRepository;
     private final NotificationService notificationService;
 
     public AnalyticsService(IssueRepository issueRepository,
                             DepartmentRepository departmentRepository,
                             UserRepository userRepository,
+                            HostelRepository hostelRepository,
                             InfrastructureInsightRepository insightRepository,
                             NotificationService notificationService) {
         this.issueRepository = issueRepository;
         this.departmentRepository = departmentRepository;
         this.userRepository = userRepository;
+        this.hostelRepository = hostelRepository;
         this.insightRepository = insightRepository;
         this.notificationService = notificationService;
     }
@@ -174,6 +177,40 @@ public class AnalyticsService {
                 .map(InsightDto::fromEntity)
                 .collect(Collectors.toList());
         dto.setRecurringInsights(insights);
+
+        // Warden Audit & Work Review Metrics
+        if (role == Role.WARDEN && hostelId != null) {
+            dto.setTotalHostelStaffCount(instituteId != null ?
+                    userRepository.countByInstituteIdAndRole(instituteId, Role.MAINTENANCE_STAFF) +
+                    userRepository.countByInstituteIdAndRole(instituteId, Role.STAFF) : 0);
+            dto.setAssignedStaffTasksCount(issueRepository.countByHostelIdAndAssignedStaffIsNotNull(hostelId));
+            dto.setUnassignedStaffTasksCount(issueRepository.countByHostelIdAndAssignedStaffIsNull(hostelId));
+            dto.setViewedIssuesCount(issueRepository.countByHostelIdAndWardenViewCountGreaterThan(hostelId, 0));
+            dto.setUnviewedIssuesCount(issueRepository.countByHostelIdAndWardenViewCount(hostelId, 0));
+            dto.setTotalWardenViews(issueRepository.sumWardenViewCountByHostelId(hostelId));
+        } else if (instituteId != null) {
+            dto.setTotalHostelStaffCount(
+                    userRepository.countByInstituteIdAndRole(instituteId, Role.MAINTENANCE_STAFF) +
+                    userRepository.countByInstituteIdAndRole(instituteId, Role.STAFF));
+            long totalAssigned = 0;
+            long totalUnassigned = 0;
+            long totalViewed = 0;
+            long totalUnviewed = 0;
+            long totalViews = 0;
+            List<Hostel> hostels = hostelRepository.findByInstituteId(instituteId);
+            for (Hostel h : hostels) {
+                totalAssigned += issueRepository.countByHostelIdAndAssignedStaffIsNotNull(h.getId());
+                totalUnassigned += issueRepository.countByHostelIdAndAssignedStaffIsNull(h.getId());
+                totalViewed += issueRepository.countByHostelIdAndWardenViewCountGreaterThan(h.getId(), 0);
+                totalUnviewed += issueRepository.countByHostelIdAndWardenViewCount(h.getId(), 0);
+                totalViews += issueRepository.sumWardenViewCountByHostelId(h.getId());
+            }
+            dto.setAssignedStaffTasksCount(totalAssigned);
+            dto.setUnassignedStaffTasksCount(totalUnassigned);
+            dto.setViewedIssuesCount(totalViewed);
+            dto.setUnviewedIssuesCount(totalUnviewed);
+            dto.setTotalWardenViews(totalViews);
+        }
 
         return dto;
     }

@@ -29,6 +29,8 @@ public class IssueDto {
     private ZonedDateTime updatedAt;
     private ZonedDateTime resolvedAt;
     private ZonedDateTime verifiedAt;
+    private Integer wardenViewCount = 0;
+    private ZonedDateTime wardenViewedAt;
 
     public IssueDto() {}
 
@@ -49,6 +51,8 @@ public class IssueDto {
         dto.setUpdatedAt(issue.getUpdatedAt());
         dto.setResolvedAt(issue.getResolvedAt());
         dto.setVerifiedAt(issue.getVerifiedAt());
+        dto.setWardenViewCount(issue.getWardenViewCount());
+        dto.setWardenViewedAt(issue.getWardenViewedAt());
 
         if (issue.getHostel() != null) {
             dto.setHostelId(issue.getHostel().getId());
@@ -140,4 +144,10 @@ public class IssueDto {
 
     public ZonedDateTime getVerifiedAt() { return verifiedAt; }
     public void setVerifiedAt(ZonedDateTime verifiedAt) { this.verifiedAt = verifiedAt; }
+
+    public Integer getWardenViewCount() { return wardenViewCount != null ? wardenViewCount : 0; }
+    public void setWardenViewCount(Integer wardenViewCount) { this.wardenViewCount = wardenViewCount; }
+
+    public ZonedDateTime getWardenViewedAt() { return wardenViewedAt; }
+    public void setWardenViewedAt(ZonedDateTime wardenViewedAt) { this.wardenViewedAt = wardenViewedAt; }
 }

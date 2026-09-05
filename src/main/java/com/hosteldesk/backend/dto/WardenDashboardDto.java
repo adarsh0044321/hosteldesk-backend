@@ -11,6 +11,14 @@ public class WardenDashboardDto {
     private long pendingVerificationCount;
     private long totalResolvedCount;
 
+    // Warden Audit & Work Review Metrics
+    private long totalHostelStaffCount;
+    private long assignedStaffTasksCount;
+    private long unassignedStaffTasksCount;
+    private long viewedIssuesCount;
+    private long unviewedIssuesCount;
+    private long totalWardenViews;
+
     private int healthPercentage = 100;
     private String healthStatus = "Normal Ops";
     private String healthSummary = "All systems operating normally.";
@@ -53,4 +61,22 @@ public class WardenDashboardDto {
 
     public List<InsightDto> getRecurringInsights() { return recurringInsights; }
     public void setRecurringInsights(List<InsightDto> recurringInsights) { this.recurringInsights = recurringInsights; }
+
+    public long getTotalHostelStaffCount() { return totalHostelStaffCount; }
+    public void setTotalHostelStaffCount(long totalHostelStaffCount) { this.totalHostelStaffCount = totalHostelStaffCount; }
+
+    public long getAssignedStaffTasksCount() { return assignedStaffTasksCount; }
+    public void setAssignedStaffTasksCount(long assignedStaffTasksCount) { this.assignedStaffTasksCount = assignedStaffTasksCount; }
+
+    public long getUnassignedStaffTasksCount() { return unassignedStaffTasksCount; }
+    public void setUnassignedStaffTasksCount(long unassignedStaffTasksCount) { this.unassignedStaffTasksCount = unassignedStaffTasksCount; }
+
+    public long getViewedIssuesCount() { return viewedIssuesCount; }
+    public void setViewedIssuesCount(long viewedIssuesCount) { this.viewedIssuesCount = viewedIssuesCount; }
+
+    public long getUnviewedIssuesCount() { return unviewedIssuesCount; }
+    public void setUnviewedIssuesCount(long unviewedIssuesCount) { this.unviewedIssuesCount = unviewedIssuesCount; }
+
+    public long getTotalWardenViews() { return totalWardenViews; }
+    public void setTotalWardenViews(long totalWardenViews) { this.totalWardenViews = totalWardenViews; }
 }

@@ -73,4 +73,12 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
     long countByAssignedDepartmentIdAndStatus(Long departmentId, IssueStatus status);
     long countByInstituteIdAndAssignedDepartmentIdAndStatusIn(Long instituteId, Long departmentId, List<IssueStatus> statuses);
     long countByInstituteIdAndAssignedDepartmentIdAndStatus(Long instituteId, Long departmentId, IssueStatus status);
+
+    long countByHostelIdAndAssignedStaffIsNotNull(Long hostelId);
+    long countByHostelIdAndAssignedStaffIsNull(Long hostelId);
+    long countByHostelIdAndWardenViewCountGreaterThan(Long hostelId, Integer count);
+    long countByHostelIdAndWardenViewCount(Long hostelId, Integer count);
+
+    @Query("SELECT COALESCE(SUM(i.wardenViewCount), 0) FROM Issue i WHERE i.hostel.id = :hostelId")
+    long sumWardenViewCountByHostelId(@Param("hostelId") Long hostelId);
 }

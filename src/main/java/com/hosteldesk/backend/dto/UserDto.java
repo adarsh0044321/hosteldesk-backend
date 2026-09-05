@@ -22,6 +22,7 @@ public class UserDto {
     private Long departmentId;
     private String departmentName;
     private String roomNumber;
+    private String batch;
     private Boolean needsPasswordChange = false;
     private long totalComplaints;
     private long activeComplaints;
@@ -39,7 +40,8 @@ public class UserDto {
         dto.setRole(user.getRole());
         dto.setStatus(user.getStatus());
         dto.setRoomNumber(user.getRoomNumber());
-        dto.setNeedsPasswordChange(user.getNeedsPasswordChange());
+        dto.setBatch(user.getBatch());
+        dto.setNeedsPasswordChange(false);
 
         if (user.getInstitute() != null) {
             dto.setInstituteId(user.getInstitute().getId());
@@ -112,8 +114,11 @@ public class UserDto {
     public String getRoomNumber() { return roomNumber; }
     public void setRoomNumber(String roomNumber) { this.roomNumber = roomNumber; }
 
-    public Boolean getNeedsPasswordChange() { return needsPasswordChange != null && needsPasswordChange; }
-    public void setNeedsPasswordChange(Boolean needsPasswordChange) { this.needsPasswordChange = needsPasswordChange; }
+    public String getBatch() { return batch; }
+    public void setBatch(String batch) { this.batch = batch; }
+
+    public Boolean getNeedsPasswordChange() { return false; }
+    public void setNeedsPasswordChange(Boolean needsPasswordChange) { this.needsPasswordChange = false; }
 
     public long getTotalComplaints() { return totalComplaints; }
     public void setTotalComplaints(long totalComplaints) { this.totalComplaints = totalComplaints; }

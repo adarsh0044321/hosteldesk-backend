@@ -112,6 +112,43 @@ public class InstituteController {
         return ResponseEntity.ok(instituteService.createHostel(instituteId, hostel));
     }
 
+    @PutMapping("/hostels/{id}/assign-warden")
+    @PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<HostelDto> assignWarden(
+            @PathVariable("id") Long hostelId,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody AssignWardenRequest request) {
+        Long instituteId = requireInstituteId(principal);
+        return ResponseEntity.ok(instituteService.assignWardenToHostel(instituteId, hostelId, request.getWardenId()));
+    }
+
+    @PutMapping("/hostels/{id}")
+    @PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<HostelDto> updateHostel(
+            @PathVariable("id") Long hostelId,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody CreateHostelRequest request) {
+        Long instituteId = requireInstituteId(principal);
+        return ResponseEntity.ok(instituteService.updateHostel(instituteId, hostelId, request));
+    }
+
+    @DeleteMapping("/hostels/{id}")
+    @PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<Map<String, String>> deleteHostel(
+            @PathVariable("id") Long hostelId,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        Long instituteId = requireInstituteId(principal);
+        instituteService.deleteHostel(instituteId, hostelId);
+        return ResponseEntity.ok(java.util.Collections.singletonMap("message", "Hostel deleted successfully."));
+    }
+
+    @PutMapping("/wardens/my-contact")
+    public ResponseEntity<UserDto> updateWardenContact(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody UpdateContactRequest request) {
+        return ResponseEntity.ok(instituteService.updateWardenContact(principal.getId(), request));
+    }
+
     @GetMapping("/crews")
     @PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<CrewWorkloadDto>> getCrewWorkloads(@AuthenticationPrincipal UserPrincipal principal) {

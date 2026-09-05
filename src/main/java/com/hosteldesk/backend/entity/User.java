@@ -52,6 +52,9 @@ public class User {
     @Column(name = "room_number", length = 20)
     private String roomNumber;
 
+    @Column(length = 50)
+    private String batch;
+
     @Column(name = "needs_password_change")
     private Boolean needsPasswordChange = false;
 
@@ -131,8 +134,11 @@ public class User {
     public Campus getCampus() { return campus; }
     public void setCampus(Campus campus) { this.campus = campus; }
 
-    public Boolean getNeedsPasswordChange() { return needsPasswordChange != null && needsPasswordChange; }
-    public void setNeedsPasswordChange(Boolean needsPasswordChange) { this.needsPasswordChange = needsPasswordChange; }
+    public String getBatch() { return batch; }
+    public void setBatch(String batch) { this.batch = batch; }
+
+    public Boolean getNeedsPasswordChange() { return false; }
+    public void setNeedsPasswordChange(Boolean needsPasswordChange) { this.needsPasswordChange = false; }
 
     public ZonedDateTime getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(ZonedDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }

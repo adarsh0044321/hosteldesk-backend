@@ -135,7 +135,7 @@ public class InstituteService {
         warden.setStatus(AccountStatus.ACTIVE);
         warden.setInstitute(institute);
         warden.setHostel(hostel);
-        warden.setNeedsPasswordChange(true);
+        warden.setNeedsPasswordChange(false);
 
         User saved = userRepository.save(warden);
 
@@ -202,7 +202,12 @@ public class InstituteService {
         student.setInstitute(institute);
         student.setHostel(hostel);
         student.setRoomNumber(request.getRoomNumber());
-        student.setNeedsPasswordChange(true);
+        String batch = request.getBatch();
+        if (batch == null || batch.trim().isEmpty()) {
+            batch = "Batch " + ZonedDateTime.now().getYear();
+        }
+        student.setBatch(batch.trim());
+        student.setNeedsPasswordChange(false);
 
         User saved = userRepository.save(student);
 
@@ -278,7 +283,7 @@ public class InstituteService {
         staff.setInstitute(institute);
         staff.setDepartment(department);
         staff.setHostel(hostel);
-        staff.setNeedsPasswordChange(true);
+        staff.setNeedsPasswordChange(false);
 
         User saved = userRepository.save(staff);
 
@@ -311,7 +316,7 @@ public class InstituteService {
 
         String tempPassword = generateTempPassword();
         user.setPasswordHash(passwordEncoder.encode(tempPassword));
-        user.setNeedsPasswordChange(true);
+        user.setNeedsPasswordChange(false);
         userRepository.save(user);
 
         return new CredentialResponse(
@@ -321,7 +326,7 @@ public class InstituteService {
                 user.getEmail(),
                 user.getRole().name(),
                 tempPassword,
-                "Temporary password generated. User must change password on next login."
+                "Temporary credentials generated successfully."
         );
     }
 
@@ -339,8 +344,12 @@ public class InstituteService {
             dto.setStudentCount(userRepository.countByHostelIdAndRole(h.getId(), Role.STUDENT));
             java.util.Optional<User> wardenOpt = userRepository.findFirstByHostelIdAndRole(h.getId(), Role.WARDEN);
             if (wardenOpt.isPresent()) {
+                dto.setWardenId(wardenOpt.get().getId());
                 dto.setWardenName(wardenOpt.get().getFullName());
                 dto.setWardenPhone(wardenOpt.get().getPhone());
+                dto.setWardenAssigned(true);
+            } else {
+                dto.setWardenAssigned(false);
             }
             dto.setTotalIssuesCount(issueRepository.countByHostelId(h.getId()));
             dto.setOpenIssuesCount(issueRepository.countByHostelIdAndStatusIn(h.getId(), activeStatuses));
@@ -366,6 +375,116 @@ public class InstituteService {
         }
         Hostel saved = hostelRepository.save(hostel);
         return HostelDto.fromEntity(saved);
+    }
+
+    @Transactional
+    public HostelDto assignWardenToHostel(Long instituteId, Long hostelId, Long wardenId) {
+        Hostel hostel = hostelRepository.findById(hostelId)
+                .orElseThrow(() -> new ResourceNotFoundException("Hostel not found: " + hostelId));
+        if (hostel.getInstitute() == null || !hostel.getInstitute().getId().equals(instituteId)) {
+            throw new BadRequestException("Hostel does not belong to this institution.");
+        }
+
+        User warden = userRepository.findById(wardenId)
+                .orElseThrow(() -> new ResourceNotFoundException("Warden not found: " + wardenId));
+        if (warden.getInstitute() == null || !warden.getInstitute().getId().equals(instituteId)) {
+            throw new BadRequestException("Warden does not belong to this institution.");
+        }
+        if (warden.getRole() != Role.WARDEN) {
+            throw new BadRequestException("Selected user is not a warden.");
+        }
+
+        // Unlink previous warden of this hostel if any
+        List<User> existingWardens = userRepository.findByInstituteIdAndRole(instituteId, Role.WARDEN);
+        for (User w : existingWardens) {
+            if (w.getHostel() != null && w.getHostel().getId().equals(hostelId) && !w.getId().equals(wardenId)) {
+                w.setHostel(null);
+                userRepository.save(w);
+            }
+        }
+
+        warden.setHostel(hostel);
+        userRepository.save(warden);
+
+        HostelDto dto = HostelDto.fromEntity(hostel);
+        dto.setWardenId(warden.getId());
+        dto.setWardenName(warden.getFullName());
+        dto.setWardenPhone(warden.getPhone());
+        dto.setWardenAssigned(true);
+        dto.setStudentCount(userRepository.countByHostelIdAndRole(hostel.getId(), Role.STUDENT));
+        return dto;
+    }
+
+    @Transactional
+    public HostelDto updateHostel(Long instituteId, Long hostelId, CreateHostelRequest request) {
+        Hostel hostel = hostelRepository.findById(hostelId)
+                .orElseThrow(() -> new ResourceNotFoundException("Hostel not found: " + hostelId));
+        if (hostel.getInstitute() == null || !hostel.getInstitute().getId().equals(instituteId)) {
+            throw new BadRequestException("Hostel does not belong to this institution.");
+        }
+
+        if (request.getName() != null && !request.getName().trim().isEmpty()) {
+            hostel.setName(request.getName().trim());
+        }
+        if (request.getLocation() != null && !request.getLocation().trim().isEmpty()) {
+            hostel.setLocation(request.getLocation().trim());
+        }
+        if (request.getDescription() != null) {
+            hostel.setDescription(request.getDescription().trim());
+        }
+        if (request.getCampusId() != null) {
+            campusRepository.findById(request.getCampusId()).ifPresent(hostel::setCampus);
+        }
+        if (request.getActive() != null) {
+            hostel.setActive(request.getActive());
+        }
+
+        Hostel saved = hostelRepository.save(hostel);
+        HostelDto dto = HostelDto.fromEntity(saved);
+        userRepository.findFirstByHostelIdAndRole(saved.getId(), Role.WARDEN).ifPresent(w -> {
+            dto.setWardenId(w.getId());
+            dto.setWardenName(w.getFullName());
+            dto.setWardenPhone(w.getPhone());
+            dto.setWardenAssigned(true);
+        });
+        dto.setStudentCount(userRepository.countByHostelIdAndRole(saved.getId(), Role.STUDENT));
+        return dto;
+    }
+
+    @Transactional
+    public void deleteHostel(Long instituteId, Long hostelId) {
+        Hostel hostel = hostelRepository.findById(hostelId)
+                .orElseThrow(() -> new ResourceNotFoundException("Hostel not found: " + hostelId));
+        if (hostel.getInstitute() == null || !hostel.getInstitute().getId().equals(instituteId)) {
+            throw new BadRequestException("Hostel does not belong to this institution.");
+        }
+
+        // Unlink wardens, staff & students from this hostel
+        List<User> residents = userRepository.findByHostelId(hostelId);
+        for (User u : residents) {
+            u.setHostel(null);
+            userRepository.save(u);
+        }
+
+        hostelRepository.delete(hostel);
+    }
+
+    @Transactional
+    public UserDto updateWardenContact(Long userId, UpdateContactRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+        if (request.getPhone() != null && !request.getPhone().trim().isEmpty()) {
+            user.setPhone(request.getPhone().trim());
+        }
+        if (request.getEmail() != null && !request.getEmail().trim().isEmpty()) {
+            String newEmail = request.getEmail().trim();
+            if (!newEmail.equalsIgnoreCase(user.getEmail()) && userRepository.existsByEmail(newEmail)) {
+                throw new BadRequestException("Email already in use: " + newEmail);
+            }
+            user.setEmail(newEmail);
+        }
+        User saved = userRepository.save(user);
+        return UserDto.fromEntity(saved);
     }
 
     @Transactional(readOnly = true)
@@ -450,7 +569,7 @@ public class InstituteService {
 
         String tempPassword = generateTempPassword();
         targetUser.setPasswordHash(passwordEncoder.encode(tempPassword));
-        targetUser.setNeedsPasswordChange(true);
+        targetUser.setNeedsPasswordChange(false);
         userRepository.save(targetUser);
 
         request.setStatus("APPROVED");

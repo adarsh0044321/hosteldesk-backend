@@ -40,6 +40,8 @@ public class IssueDetailDto extends IssueDto {
         dto.setUpdatedAt(base.getUpdatedAt());
         dto.setResolvedAt(base.getResolvedAt());
         dto.setVerifiedAt(base.getVerifiedAt());
+        dto.setWardenViewCount(base.getWardenViewCount());
+        dto.setWardenViewedAt(base.getWardenViewedAt());
 
         dto.setResolutionNotes(issue.getResolutionNotes());
         dto.setReopenReason(issue.getReopenReason());
