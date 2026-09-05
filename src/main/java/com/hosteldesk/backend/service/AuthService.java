@@ -202,12 +202,20 @@ public class AuthService {
                 .or(() -> userRepository.findByInstituteCodeAndEmail(institute.getCode(), request.getIdentifier()))
                 .orElseThrow(() -> new BadRequestException("User not found in institute: " + request.getIdentifier()));
 
+        String phone = request.getContactPhone();
+        if (phone == null || phone.trim().isEmpty()) {
+            phone = user.getPhone();
+        }
+
         PasswordResetRequest resetRequest = new PasswordResetRequest(
                 institute,
                 user,
                 user.getRole().name(),
-                request.getReason() != null ? request.getReason() : "Forgotten credentials"
+                request.getReason() != null ? request.getReason() : "Account recovery requested"
         );
+        resetRequest.setContactPhone(phone != null ? phone.trim() : null);
+        resetRequest.setAssignedHandler("Institute IT Helpdesk");
+        resetRequest.setAssignedDepartment("IT_SUPPORT");
         passwordResetRequestRepository.save(resetRequest);
     }
 

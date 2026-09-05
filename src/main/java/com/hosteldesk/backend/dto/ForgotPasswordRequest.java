@@ -16,6 +16,9 @@ public class ForgotPasswordRequest {
     private String role; // STUDENT, WARDEN, STAFF
     private String reason;
 
+    @JsonAlias({"contactPhone", "phone", "contactNumber", "mobileNumber", "mobile"})
+    private String contactPhone;
+
     public ForgotPasswordRequest() {}
 
     public String getInstituteCode() { return instituteCode; }
@@ -29,4 +32,7 @@ public class ForgotPasswordRequest {
 
     public String getReason() { return reason; }
     public void setReason(String reason) { this.reason = reason; }
+
+    public String getContactPhone() { return contactPhone; }
+    public void setContactPhone(String contactPhone) { this.contactPhone = contactPhone; }
 }

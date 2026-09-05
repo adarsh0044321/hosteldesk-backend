@@ -32,6 +32,15 @@ public class PasswordResetRequest {
     @Column(columnDefinition = "TEXT")
     private String reason;
 
+    @Column(name = "contact_phone", length = 30)
+    private String contactPhone;
+
+    @Column(name = "assigned_handler", length = 100)
+    private String assignedHandler = "Institute IT Helpdesk";
+
+    @Column(name = "assigned_department", length = 50)
+    private String assignedDepartment = "IT_SUPPORT";
+
     @JsonIgnore
     @Column(name = "temporary_password_hash")
     private String temporaryPasswordHash;
@@ -95,4 +104,22 @@ public class PasswordResetRequest {
     public String getInstituteName() { return institute != null ? institute.getName() : null; }
     public Long getReviewedById() { return reviewedBy != null ? reviewedBy.getId() : null; }
     public String getReviewedByName() { return reviewedBy != null ? reviewedBy.getFullName() : null; }
+
+    public String getContactPhone() {
+        if (contactPhone != null && !contactPhone.trim().isEmpty()) {
+            return contactPhone.trim();
+        }
+        return user != null ? user.getPhone() : null;
+    }
+    public void setContactPhone(String contactPhone) { this.contactPhone = contactPhone; }
+
+    public String getUserPhone() {
+        return getContactPhone();
+    }
+
+    public String getAssignedHandler() { return assignedHandler; }
+    public void setAssignedHandler(String assignedHandler) { this.assignedHandler = assignedHandler; }
+
+    public String getAssignedDepartment() { return assignedDepartment; }
+    public void setAssignedDepartment(String assignedDepartment) { this.assignedDepartment = assignedDepartment; }
 }

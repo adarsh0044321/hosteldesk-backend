@@ -132,6 +132,17 @@ public class InstituteController {
         return ResponseEntity.ok(instituteService.approvePasswordReset(instituteId, requestId, principal.getId()));
     }
 
+    @PostMapping("/password-resets/{id}/assign")
+    public ResponseEntity<PasswordResetRequest> assignPasswordReset(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable("id") Long requestId,
+            @RequestBody(required = false) Map<String, String> body) {
+        Long instituteId = requireInstituteId(principal);
+        String handlerName = body != null && body.containsKey("handlerName") ? body.get("handlerName") : "Institute IT Helpdesk";
+        String handlerDepartment = body != null && body.containsKey("handlerDepartment") ? body.get("handlerDepartment") : "IT_SUPPORT";
+        return ResponseEntity.ok(instituteService.assignPasswordReset(instituteId, requestId, handlerName, handlerDepartment));
+    }
+
     @PostMapping("/password-resets/{id}/reject")
     public ResponseEntity<Map<String, String>> rejectPasswordReset(
             @AuthenticationPrincipal UserPrincipal principal,

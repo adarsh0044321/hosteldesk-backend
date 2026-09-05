@@ -10,5 +10,7 @@ import java.util.List;
 public interface PasswordResetRequestRepository extends JpaRepository<PasswordResetRequest, Long> {
     List<PasswordResetRequest> findByInstituteIdAndStatus(Long instituteId, String status);
     List<PasswordResetRequest> findByInstituteId(Long instituteId);
+    List<PasswordResetRequest> findByInstituteIdOrderByCreatedAtDesc(Long instituteId);
+    List<PasswordResetRequest> findByInstituteIdAndStatusInOrderByCreatedAtDesc(Long instituteId, List<String> statuses);
     List<PasswordResetRequest> findByUser_Id(Long userId);
 }

@@ -312,7 +312,26 @@ public class InstituteService {
 
     @Transactional(readOnly = true)
     public List<PasswordResetRequest> getPasswordResets(Long instituteId) {
-        return passwordResetRequestRepository.findByInstituteIdAndStatus(instituteId, "PENDING");
+        return passwordResetRequestRepository.findByInstituteIdOrderByCreatedAtDesc(instituteId);
+    }
+
+    @Transactional
+    public PasswordResetRequest assignPasswordReset(Long instituteId, Long requestId, String handlerName, String handlerDepartment) {
+        PasswordResetRequest request = passwordResetRequestRepository.findById(requestId)
+                .orElseThrow(() -> new ResourceNotFoundException("Request not found: " + requestId));
+
+        if (!request.getInstitute().getId().equals(instituteId)) {
+            throw new BadRequestException("Request does not belong to this institution.");
+        }
+
+        if (handlerName != null && !handlerName.trim().isEmpty()) {
+            request.setAssignedHandler(handlerName.trim());
+        }
+        if (handlerDepartment != null && !handlerDepartment.trim().isEmpty()) {
+            request.setAssignedDepartment(handlerDepartment.trim());
+        }
+        request.setStatus("ASSIGNED");
+        return passwordResetRequestRepository.save(request);
     }
 
     @Transactional
