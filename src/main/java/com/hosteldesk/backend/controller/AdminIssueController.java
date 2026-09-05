@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/admin")
-@PreAuthorize("hasAnyRole('WARDEN', 'ADMIN')")
+@PreAuthorize("hasAnyRole('WARDEN', 'ADMIN', 'INSTITUTE_ADMIN', 'SUPER_ADMIN')")
 public class AdminIssueController {
 
     private final IssueService issueService;
@@ -42,15 +42,19 @@ public class AdminIssueController {
     }
 
     @GetMapping("/dashboard")
-    public ResponseEntity<WardenDashboardDto> getDashboard() {
-        return ResponseEntity.ok(analyticsService.getWardenDashboard());
+    public ResponseEntity<WardenDashboardDto> getDashboard(@AuthenticationPrincipal UserPrincipal principal) {
+        Long instituteId = principal != null ? principal.getInstituteId() : null;
+        return ResponseEntity.ok(analyticsService.getWardenDashboard(instituteId));
     }
 
     @GetMapping("/issues")
     public ResponseEntity<List<IssueDto>> getIssues(
+            @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(value = "status", required = false) String status,
             @RequestParam(value = "priority", required = false) String priority,
             @RequestParam(value = "departmentId", required = false) Long departmentId) {
+
+        Long instituteId = principal != null ? principal.getInstituteId() : null;
 
         IssueStatus issueStatus = null;
         if (status != null && !status.isEmpty()) {
@@ -66,7 +70,7 @@ public class AdminIssueController {
             } catch (Exception ignored) {}
         }
 
-        return ResponseEntity.ok(issueService.searchAdminIssues(issueStatus, issuePriority, departmentId));
+        return ResponseEntity.ok(issueService.searchAdminIssues(instituteId, issueStatus, issuePriority, departmentId));
     }
 
     @GetMapping("/issues/{id}")

@@ -91,17 +91,23 @@ public class InstituteController {
     }
 
     @GetMapping("/hostels")
-    public ResponseEntity<List<Hostel>> getHostels(@AuthenticationPrincipal UserPrincipal principal) {
+    public ResponseEntity<List<HostelDto>> getHostels(@AuthenticationPrincipal UserPrincipal principal) {
         Long instituteId = requireInstituteId(principal);
         return ResponseEntity.ok(instituteService.getHostels(instituteId));
     }
 
     @PostMapping("/hostels")
-    public ResponseEntity<Hostel> createHostel(
+    public ResponseEntity<HostelDto> createHostel(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody Hostel hostel) {
         Long instituteId = requireInstituteId(principal);
         return ResponseEntity.ok(instituteService.createHostel(instituteId, hostel));
+    }
+
+    @GetMapping("/crews")
+    public ResponseEntity<List<CrewWorkloadDto>> getCrewWorkloads(@AuthenticationPrincipal UserPrincipal principal) {
+        Long instituteId = requireInstituteId(principal);
+        return ResponseEntity.ok(instituteService.getCrewWorkloads(instituteId));
     }
 
     @GetMapping("/departments")

@@ -13,7 +13,7 @@ import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/analytics")
-@PreAuthorize("hasAnyRole('WARDEN', 'ADMIN')")
+@PreAuthorize("hasAnyRole('WARDEN', 'ADMIN', 'INSTITUTE_ADMIN', 'SUPER_ADMIN')")
 public class AnalyticsController {
 
     private final InfrastructureInsightRepository insightRepository;

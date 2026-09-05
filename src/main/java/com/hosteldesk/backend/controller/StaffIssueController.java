@@ -20,7 +20,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/staff")
-@PreAuthorize("hasRole('MAINTENANCE_STAFF')")
+@PreAuthorize("hasAnyRole('MAINTENANCE_STAFF', 'STAFF', 'WARDEN', 'ADMIN', 'INSTITUTE_ADMIN', 'SUPER_ADMIN')")
 public class StaffIssueController {
 
     private final IssueService issueService;
@@ -35,6 +35,10 @@ public class StaffIssueController {
     public ResponseEntity<List<IssueDto>> getStaffIssues(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(value = "filter", defaultValue = "MY_WORK") String filter) {
+        if (principal.getRole() != com.hosteldesk.backend.entity.Role.STAFF && 
+            principal.getRole() != com.hosteldesk.backend.entity.Role.MAINTENANCE_STAFF) {
+            return ResponseEntity.ok(java.util.Collections.emptyList());
+        }
         return ResponseEntity.ok(issueService.getStaffIssues(principal.getId(), filter));
     }
 

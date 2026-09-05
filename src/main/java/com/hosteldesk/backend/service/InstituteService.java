@@ -100,9 +100,17 @@ public class InstituteService {
         Institute institute = instituteRepository.findById(instituteId)
                 .orElseThrow(() -> new ResourceNotFoundException("Institute not found: " + instituteId));
 
+        String code = institute.getCode();
         String institutionalId = request.getInstitutionalId();
         if (institutionalId == null || institutionalId.trim().isEmpty()) {
-            institutionalId = "WRD-" + (userRepository.countByInstituteIdAndRole(instituteId, Role.WARDEN) + 101);
+            long count = userRepository.countByInstituteIdAndRole(instituteId, Role.WARDEN) + 1;
+            institutionalId = code + "-WRD-" + String.format("%03d", count);
+            while (userRepository.existsByInstitutionalId(institutionalId)) {
+                count++;
+                institutionalId = code + "-WRD-" + String.format("%03d", count);
+            }
+        } else if (userRepository.existsByInstitutionalId(institutionalId)) {
+            throw new BadRequestException("Warden ID already registered: " + institutionalId);
         }
 
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -152,9 +160,17 @@ public class InstituteService {
         Institute institute = instituteRepository.findById(instituteId)
                 .orElseThrow(() -> new ResourceNotFoundException("Institute not found: " + instituteId));
 
+        String code = institute.getCode();
         String institutionalId = request.getInstitutionalId();
         if (institutionalId == null || institutionalId.trim().isEmpty()) {
-            institutionalId = "ST-" + ZonedDateTime.now().getYear() + "-" + (1000 + userRepository.countByInstituteIdAndRole(instituteId, Role.STUDENT) + 1);
+            long count = userRepository.countByInstituteIdAndRole(instituteId, Role.STUDENT) + 1;
+            institutionalId = code + "-ST-" + ZonedDateTime.now().getYear() + "-" + String.format("%04d", count);
+            while (userRepository.existsByInstitutionalId(institutionalId)) {
+                count++;
+                institutionalId = code + "-ST-" + ZonedDateTime.now().getYear() + "-" + String.format("%04d", count);
+            }
+        } else if (userRepository.existsByInstitutionalId(institutionalId)) {
+            throw new BadRequestException("Student Roll No / ID already registered: " + institutionalId);
         }
 
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -164,6 +180,12 @@ public class InstituteService {
         Hostel hostel = null;
         if (request.getHostelId() != null) {
             hostel = hostelRepository.findById(request.getHostelId()).orElse(null);
+        }
+        if (hostel == null) {
+            List<Hostel> instituteHostels = hostelRepository.findByInstituteId(instituteId);
+            if (!instituteHostels.isEmpty()) {
+                hostel = instituteHostels.get(0);
+            }
         }
 
         String tempPassword = generateTempPassword();
@@ -196,8 +218,18 @@ public class InstituteService {
 
     @Transactional(readOnly = true)
     public List<UserDto> getStudents(Long instituteId) {
-        return userRepository.findByInstituteIdAndRole(instituteId, Role.STUDENT)
-                .stream().map(UserDto::fromEntity).collect(Collectors.toList());
+        List<User> students = userRepository.findByInstituteIdAndRole(instituteId, Role.STUDENT);
+        List<IssueStatus> activeStatuses = java.util.Arrays.asList(
+                IssueStatus.REPORTED, IssueStatus.AI_ANALYZING, IssueStatus.ANALYZED,
+                IssueStatus.ASSIGNED, IssueStatus.IN_PROGRESS, IssueStatus.AWAITING_VERIFICATION,
+                IssueStatus.REOPENED
+        );
+        return students.stream().map(s -> {
+            UserDto dto = UserDto.fromEntity(s);
+            dto.setTotalComplaints(issueRepository.countByReportedById(s.getId()));
+            dto.setActiveComplaints(issueRepository.countByReportedByIdAndStatusIn(s.getId(), activeStatuses));
+            return dto;
+        }).collect(Collectors.toList());
     }
 
     @Transactional
@@ -205,9 +237,17 @@ public class InstituteService {
         Institute institute = instituteRepository.findById(instituteId)
                 .orElseThrow(() -> new ResourceNotFoundException("Institute not found: " + instituteId));
 
+        String code = institute.getCode();
         String institutionalId = request.getInstitutionalId();
         if (institutionalId == null || institutionalId.trim().isEmpty()) {
-            institutionalId = "STF-" + (100 + userRepository.countByInstituteIdAndRole(instituteId, Role.STAFF) + 1);
+            long count = userRepository.countByInstituteIdAndRole(instituteId, Role.STAFF) + 1;
+            institutionalId = code + "-STF-" + String.format("%03d", count);
+            while (userRepository.existsByInstitutionalId(institutionalId)) {
+                count++;
+                institutionalId = code + "-STF-" + String.format("%03d", count);
+            }
+        } else if (userRepository.existsByInstitutionalId(institutionalId)) {
+            throw new BadRequestException("Staff ID already registered: " + institutionalId);
         }
 
         if (userRepository.existsByEmail(request.getEmail())) {
@@ -285,16 +325,68 @@ public class InstituteService {
     }
 
     @Transactional(readOnly = true)
-    public List<Hostel> getHostels(Long instituteId) {
-        return hostelRepository.findByInstituteId(instituteId);
+    public List<HostelDto> getHostels(Long instituteId) {
+        List<Hostel> hostels = hostelRepository.findByInstituteId(instituteId);
+        List<IssueStatus> activeStatuses = java.util.Arrays.asList(
+                IssueStatus.REPORTED, IssueStatus.AI_ANALYZING, IssueStatus.ANALYZED,
+                IssueStatus.ASSIGNED, IssueStatus.IN_PROGRESS, IssueStatus.AWAITING_VERIFICATION,
+                IssueStatus.REOPENED
+        );
+        List<HostelDto> dtos = new java.util.ArrayList<>();
+        for (Hostel h : hostels) {
+            HostelDto dto = HostelDto.fromEntity(h);
+            dto.setStudentCount(userRepository.countByHostelIdAndRole(h.getId(), Role.STUDENT));
+            java.util.Optional<User> wardenOpt = userRepository.findFirstByHostelIdAndRole(h.getId(), Role.WARDEN);
+            if (wardenOpt.isPresent()) {
+                dto.setWardenName(wardenOpt.get().getFullName());
+                dto.setWardenPhone(wardenOpt.get().getPhone());
+            }
+            dto.setTotalIssuesCount(issueRepository.countByHostelId(h.getId()));
+            dto.setOpenIssuesCount(issueRepository.countByHostelIdAndStatusIn(h.getId(), activeStatuses));
+            dto.setResolvedIssuesCount(issueRepository.countByHostelIdAndStatus(h.getId(), IssueStatus.RESOLVED));
+            dtos.add(dto);
+        }
+        return dtos;
     }
 
     @Transactional
-    public Hostel createHostel(Long instituteId, Hostel hostel) {
+    public HostelDto createHostel(Long instituteId, Hostel hostel) {
         Institute institute = instituteRepository.findById(instituteId)
                 .orElseThrow(() -> new ResourceNotFoundException("Institute not found: " + instituteId));
         hostel.setInstitute(institute);
-        return hostelRepository.save(hostel);
+        Hostel saved = hostelRepository.save(hostel);
+        return HostelDto.fromEntity(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public List<CrewWorkloadDto> getCrewWorkloads(Long instituteId) {
+        List<Department> departments = departmentRepository.findByInstituteId(instituteId);
+        if (departments.isEmpty()) {
+            departments = departmentRepository.findAll();
+        }
+        List<IssueStatus> activeStatuses = java.util.Arrays.asList(
+                IssueStatus.REPORTED, IssueStatus.AI_ANALYZING, IssueStatus.ANALYZED,
+                IssueStatus.ASSIGNED, IssueStatus.IN_PROGRESS, IssueStatus.AWAITING_VERIFICATION,
+                IssueStatus.REOPENED
+        );
+        List<CrewWorkloadDto> list = new java.util.ArrayList<>();
+        for (Department dept : departments) {
+            CrewWorkloadDto dto = new CrewWorkloadDto();
+            dto.setDepartmentId(dept.getId());
+            dto.setName(dept.getName());
+            dto.setDisplayName(dept.getDisplayName());
+            dto.setDescription(dept.getDescription());
+
+            List<User> staff = userRepository.findByInstituteIdAndDepartmentId(instituteId, dept.getId());
+            dto.setStaffCount(staff.size());
+            dto.setStaffNames(staff.stream().map(User::getFullName).collect(Collectors.toList()));
+
+            dto.setActiveTasks(issueRepository.countByInstituteIdAndAssignedDepartmentIdAndStatusIn(instituteId, dept.getId(), activeStatuses));
+            dto.setResolvedTasks(issueRepository.countByInstituteIdAndAssignedDepartmentIdAndStatus(instituteId, dept.getId(), IssueStatus.RESOLVED));
+            dto.setTotalTasks(dto.getActiveTasks() + dto.getResolvedTasks());
+            list.add(dto);
+        }
+        return list;
     }
 
     @Transactional(readOnly = true)

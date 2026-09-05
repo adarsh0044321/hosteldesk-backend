@@ -23,6 +23,8 @@ public class UserDto {
     private String departmentName;
     private String roomNumber;
     private Boolean needsPasswordChange = false;
+    private long totalComplaints;
+    private long activeComplaints;
 
     public UserDto() {}
 
@@ -112,4 +114,10 @@ public class UserDto {
 
     public Boolean getNeedsPasswordChange() { return needsPasswordChange != null && needsPasswordChange; }
     public void setNeedsPasswordChange(Boolean needsPasswordChange) { this.needsPasswordChange = needsPasswordChange; }
+
+    public long getTotalComplaints() { return totalComplaints; }
+    public void setTotalComplaints(long totalComplaints) { this.totalComplaints = totalComplaints; }
+
+    public long getActiveComplaints() { return activeComplaints; }
+    public void setActiveComplaints(long activeComplaints) { this.activeComplaints = activeComplaints; }
 }

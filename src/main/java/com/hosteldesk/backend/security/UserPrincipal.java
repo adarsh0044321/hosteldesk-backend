@@ -39,7 +39,21 @@ public class UserPrincipal implements UserDetails {
     }
 
     public static UserPrincipal create(User user) {
-        GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + user.getRole().name());
+        java.util.List<GrantedAuthority> authorities = new java.util.ArrayList<>();
+        authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().name()));
+
+        if (user.getRole() == Role.INSTITUTE_ADMIN || user.getRole() == Role.SUPER_ADMIN) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+            authorities.add(new SimpleGrantedAuthority("ROLE_INSTITUTE_ADMIN"));
+        } else if (user.getRole() == Role.ADMIN) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_INSTITUTE_ADMIN"));
+        }
+
+        if (user.getRole() == Role.STAFF || user.getRole() == Role.MAINTENANCE_STAFF) {
+            authorities.add(new SimpleGrantedAuthority("ROLE_STAFF"));
+            authorities.add(new SimpleGrantedAuthority("ROLE_MAINTENANCE_STAFF"));
+        }
+
         Long instId = user.getInstitute() != null ? user.getInstitute().getId() : null;
         String instCode = user.getInstitute() != null ? user.getInstitute().getCode() : null;
 
@@ -53,7 +67,7 @@ public class UserPrincipal implements UserDetails {
                 user.getStatus(),
                 instId,
                 instCode,
-                Collections.singletonList(authority)
+                authorities
         );
     }
 

@@ -61,4 +61,12 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
 
     List<Issue> findByBlockNameAndCategoryAndCreatedAtGreaterThanEqualOrderByCreatedAtDesc(
             String blockName, String category, ZonedDateTime since);
+
+    long countByReportedById(Long studentId);
+    long countByHostelId(Long hostelId);
+    long countByHostelIdAndStatus(Long hostelId, IssueStatus status);
+    long countByHostelIdAndStatusIn(Long hostelId, List<IssueStatus> statuses);
+    long countByAssignedDepartmentIdAndStatus(Long departmentId, IssueStatus status);
+    long countByInstituteIdAndAssignedDepartmentIdAndStatusIn(Long instituteId, Long departmentId, List<IssueStatus> statuses);
+    long countByInstituteIdAndAssignedDepartmentIdAndStatus(Long instituteId, Long departmentId, IssueStatus status);
 }

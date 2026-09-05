@@ -67,6 +67,11 @@ public class AnalyticsService {
 
     @Transactional(readOnly = true)
     public WardenDashboardDto getWardenDashboard() {
+        return getWardenDashboard(null);
+    }
+
+    @Transactional(readOnly = true)
+    public WardenDashboardDto getWardenDashboard(Long instituteId) {
         WardenDashboardDto dto = new WardenDashboardDto();
 
         List<IssueStatus> activeStatuses = Arrays.asList(
@@ -75,14 +80,27 @@ public class AnalyticsService {
                 IssueStatus.REOPENED
         );
 
-        long totalOpen = issueRepository.countByStatusIn(activeStatuses);
-        long inWork = issueRepository.countByStatus(IssueStatus.IN_PROGRESS);
-        long pendingCheck = issueRepository.countByStatus(IssueStatus.AWAITING_VERIFICATION);
-        long resolved = issueRepository.countByStatus(IssueStatus.RESOLVED);
+        long totalOpen;
+        long inWork;
+        long pendingCheck;
+        long resolved;
+        long urgentP1;
 
-        long urgentP1 = issueRepository.findAll().stream()
-                .filter(i -> i.getPriority() == IssuePriority.P1_URGENT && i.getStatus() != IssueStatus.RESOLVED)
-                .count();
+        if (instituteId != null) {
+            totalOpen = issueRepository.countByInstituteIdAndStatusIn(instituteId, activeStatuses);
+            inWork = issueRepository.countByInstituteIdAndStatus(instituteId, IssueStatus.IN_PROGRESS);
+            pendingCheck = issueRepository.countByInstituteIdAndStatus(instituteId, IssueStatus.AWAITING_VERIFICATION);
+            resolved = issueRepository.countByInstituteIdAndStatus(instituteId, IssueStatus.RESOLVED);
+            urgentP1 = issueRepository.countByInstituteIdAndPriority(instituteId, IssuePriority.P1_URGENT);
+        } else {
+            totalOpen = issueRepository.countByStatusIn(activeStatuses);
+            inWork = issueRepository.countByStatus(IssueStatus.IN_PROGRESS);
+            pendingCheck = issueRepository.countByStatus(IssueStatus.AWAITING_VERIFICATION);
+            resolved = issueRepository.countByStatus(IssueStatus.RESOLVED);
+            urgentP1 = issueRepository.findAll().stream()
+                    .filter(i -> i.getPriority() == IssuePriority.P1_URGENT && i.getStatus() != IssueStatus.RESOLVED)
+                    .count();
+        }
 
         dto.setTotalOpenCount(totalOpen);
         dto.setUrgentP1Count(urgentP1);
@@ -90,13 +108,18 @@ public class AnalyticsService {
         dto.setPendingVerificationCount(pendingCheck);
         dto.setTotalResolvedCount(resolved);
 
-        // Calculate health percentage (ratio of operational integrity)
-        int health = (int) Math.max(70, Math.min(100, 100 - (urgentP1 * 3 + totalOpen)));
-        dto.setHealthPercentage(health > 0 ? health : 88);
-        dto.setHealthStatus(urgentP1 > 5 ? "Critical Follow-up" : "Normal Ops");
+        int health = totalOpen == 0 ? 100 : (int) Math.max(60, 100 - (urgentP1 * 5 + totalOpen * 2));
+        dto.setHealthPercentage(health);
+        dto.setHealthStatus(urgentP1 > 0 ? "Action Required" : "System Normal");
+        dto.setHealthSummary(totalOpen == 0 ? "All facilities systems operating normally." :
+                String.format("Active: %d open tickets · %d in-progress · %d urgent", totalOpen, inWork, urgentP1));
 
-        // Attention required: top P1 issues or unassigned
-        List<IssueDto> attention = issueRepository.findAll().stream()
+        // Attention required
+        List<Issue> sourceList = instituteId != null ?
+                issueRepository.findByInstituteIdOrderByCreatedAtDesc(instituteId) :
+                issueRepository.findAll();
+
+        List<IssueDto> attention = sourceList.stream()
                 .filter(i -> (i.getPriority() == IssuePriority.P1_URGENT || i.getStatus() == IssueStatus.REPORTED || i.getStatus() == IssueStatus.REOPENED)
                         && i.getStatus() != IssueStatus.RESOLVED)
                 .sorted(Comparator.comparing(Issue::getCreatedAt).reversed())
@@ -107,16 +130,26 @@ public class AnalyticsService {
 
         // Department Workload Matrix
         List<Map<String, Object>> workloads = new ArrayList<>();
-        for (Department dept : departmentRepository.findAll()) {
+        List<Department> depts = instituteId != null ? departmentRepository.findByInstituteId(instituteId) : departmentRepository.findAll();
+        if (depts.isEmpty()) {
+            depts = departmentRepository.findAll();
+        }
+
+        for (Department dept : depts) {
             Map<String, Object> map = new HashMap<>();
             map.put("departmentId", dept.getId());
             map.put("name", dept.getName());
             map.put("displayName", dept.getDisplayName());
 
-            long staffOnDuty = userRepository.findByDepartmentId(dept.getId()).size();
-            long activeTasks = issueRepository.countByAssignedDepartmentIdAndStatusIn(dept.getId(), activeStatuses);
+            long staffOnDuty = instituteId != null ?
+                    userRepository.findByInstituteIdAndDepartmentId(instituteId, dept.getId()).size() :
+                    userRepository.findByDepartmentId(dept.getId()).size();
 
-            map.put("staffOnDuty", staffOnDuty > 0 ? staffOnDuty : 2);
+            long activeTasks = instituteId != null ?
+                    issueRepository.countByInstituteIdAndAssignedDepartmentIdAndStatusIn(instituteId, dept.getId(), activeStatuses) :
+                    issueRepository.countByAssignedDepartmentIdAndStatusIn(dept.getId(), activeStatuses);
+
+            map.put("staffOnDuty", staffOnDuty);
             map.put("activeTasks", activeTasks);
             workloads.add(map);
         }

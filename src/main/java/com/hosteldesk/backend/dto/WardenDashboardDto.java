@@ -11,9 +11,9 @@ public class WardenDashboardDto {
     private long pendingVerificationCount;
     private long totalResolvedCount;
 
-    private int healthPercentage = 91;
+    private int healthPercentage = 100;
     private String healthStatus = "Normal Ops";
-    private String healthSummary = "Active concerns: 3 plumbing · 2 electrical · 0 security";
+    private String healthSummary = "All systems operating normally.";
 
     private List<IssueDto> attentionRequired = new ArrayList<>();
     private List<Map<String, Object>> departmentWorkloads = new ArrayList<>();
