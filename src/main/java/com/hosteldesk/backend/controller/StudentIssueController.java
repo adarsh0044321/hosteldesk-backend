@@ -1,0 +1,121 @@
+package com.hosteldesk.backend.controller;
+
+import com.hosteldesk.backend.dto.*;
+import com.hosteldesk.backend.entity.IssuePriority;
+import com.hosteldesk.backend.entity.IssueStatus;
+import com.hosteldesk.backend.entity.User;
+import com.hosteldesk.backend.exception.ResourceNotFoundException;
+import com.hosteldesk.backend.repository.UserRepository;
+import com.hosteldesk.backend.security.UserPrincipal;
+import com.hosteldesk.backend.service.AnalyticsService;
+import com.hosteldesk.backend.service.IssueService;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/student")
+@PreAuthorize("hasRole('STUDENT')")
+public class StudentIssueController {
+
+    private final IssueService issueService;
+    private final AnalyticsService analyticsService;
+    private final UserRepository userRepository;
+
+    public StudentIssueController(IssueService issueService,
+                                  AnalyticsService analyticsService,
+                                  UserRepository userRepository) {
+        this.issueService = issueService;
+        this.analyticsService = analyticsService;
+        this.userRepository = userRepository;
+    }
+
+    @GetMapping("/dashboard")
+    public ResponseEntity<StudentDashboardDto> getDashboard(@AuthenticationPrincipal UserPrincipal principal) {
+        User student = userRepository.findById(principal.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+        return ResponseEntity.ok(analyticsService.getStudentDashboard(student));
+    }
+
+    @PostMapping(value = "/issues", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<IssueDetailDto> createIssue(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam("title") String title,
+            @RequestParam("description") String description,
+            @RequestParam("category") String category,
+            @RequestParam(value = "priority", required = false) String priority,
+            @RequestParam("blockName") String blockName,
+            @RequestParam("roomNumber") String roomNumber,
+            @RequestPart(value = "attachment", required = false) MultipartFile attachment) {
+
+        User student = userRepository.findById(principal.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+
+        CreateIssueRequest req = new CreateIssueRequest();
+        req.setTitle(title);
+        req.setDescription(description);
+        req.setCategory(category);
+        req.setBlockName(blockName);
+        req.setRoomNumber(roomNumber);
+        if (priority != null && !priority.isEmpty()) {
+            try {
+                req.setPriority(IssuePriority.valueOf(priority));
+            } catch (Exception ignored) {}
+        }
+
+        IssueDetailDto created = issueService.createIssue(student, req, attachment);
+        return ResponseEntity.status(201).body(created);
+    }
+
+    @GetMapping("/issues")
+    public ResponseEntity<List<IssueDto>> getMyIssues(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestParam(value = "status", required = false) String status) {
+
+        IssueStatus issueStatus = null;
+        if (status != null && !status.isEmpty()) {
+            try {
+                issueStatus = IssueStatus.valueOf(status.toUpperCase());
+            } catch (Exception ignored) {}
+        }
+
+        return ResponseEntity.ok(issueService.getStudentIssues(principal.getId(), issueStatus));
+    }
+
+    @GetMapping("/issues/{id}")
+    public ResponseEntity<IssueDetailDto> getIssueDetail(
+            @PathVariable("id") Long id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        return ResponseEntity.ok(issueService.getIssueDetail(id, principal));
+    }
+
+    @PostMapping("/issues/{id}/verify")
+    public ResponseEntity<IssueDetailDto> verifyResolution(
+            @PathVariable("id") Long id,
+            @RequestBody(required = false) VerifyResolutionRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        User student = userRepository.findById(principal.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+
+        String note = request != null ? request.getSatisfactionNote() : "Confirmed fixed by resident";
+        return ResponseEntity.ok(issueService.verifyResolution(id, note, student));
+    }
+
+    @PostMapping("/issues/{id}/reopen")
+    public ResponseEntity<IssueDetailDto> reopenIssue(
+            @PathVariable("id") Long id,
+            @RequestBody ReopenIssueRequest request,
+            @AuthenticationPrincipal UserPrincipal principal) {
+
+        User student = userRepository.findById(principal.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+
+        return ResponseEntity.ok(issueService.reopenIssue(id, request.getReason(), student));
+    }
+}
