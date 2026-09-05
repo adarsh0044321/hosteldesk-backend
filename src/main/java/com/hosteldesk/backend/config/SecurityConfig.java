@@ -57,7 +57,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/files/**").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 .requestMatchers("/h2-console/**").permitAll()
-                .requestMatchers("/api/institute/**").hasAnyRole("INSTITUTE_ADMIN", "ADMIN", "SUPER_ADMIN")
+                .requestMatchers("/api/institute/**").hasAnyRole("INSTITUTE_ADMIN", "ADMIN", "SUPER_ADMIN", "WARDEN")
                 .requestMatchers("/api/student/**").hasRole("STUDENT")
                 .requestMatchers("/api/admin/**").hasAnyRole("WARDEN", "ADMIN", "INSTITUTE_ADMIN", "SUPER_ADMIN")
                 .requestMatchers("/api/analytics/**").hasAnyRole("WARDEN", "ADMIN", "INSTITUTE_ADMIN", "SUPER_ADMIN")

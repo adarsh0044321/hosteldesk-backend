@@ -18,7 +18,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/institute")
-@PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
+@PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN', 'WARDEN')")
 public class InstituteController {
 
     private final InstituteService instituteService;
@@ -35,12 +35,14 @@ public class InstituteController {
     }
 
     @GetMapping("/dashboard")
+    @PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<InstituteDashboardDto> getDashboard(@AuthenticationPrincipal UserPrincipal principal) {
         Long instituteId = requireInstituteId(principal);
         return ResponseEntity.ok(instituteService.getDashboard(instituteId));
     }
 
     @PostMapping("/wardens")
+    @PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<CredentialResponse> createWarden(
             @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody CreateUserWithTempPasswordRequest request) {
@@ -49,12 +51,14 @@ public class InstituteController {
     }
 
     @GetMapping("/wardens")
+    @PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<UserDto>> getWardens(@AuthenticationPrincipal UserPrincipal principal) {
         Long instituteId = requireInstituteId(principal);
         return ResponseEntity.ok(instituteService.getWardens(instituteId));
     }
 
     @PostMapping("/students")
+    @PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<CredentialResponse> createStudent(
             @AuthenticationPrincipal UserPrincipal principal,
             @Valid @RequestBody CreateUserWithTempPasswordRequest request) {
@@ -63,6 +67,7 @@ public class InstituteController {
     }
 
     @GetMapping("/students")
+    @PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<UserDto>> getStudents(@AuthenticationPrincipal UserPrincipal principal) {
         Long instituteId = requireInstituteId(principal);
         return ResponseEntity.ok(instituteService.getStudents(instituteId));
@@ -83,6 +88,7 @@ public class InstituteController {
     }
 
     @PostMapping("/users/{id}/reset-password")
+    @PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<CredentialResponse> resetUserPassword(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable("id") Long userId) {
@@ -91,12 +97,14 @@ public class InstituteController {
     }
 
     @GetMapping("/hostels")
+    @PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<HostelDto>> getHostels(@AuthenticationPrincipal UserPrincipal principal) {
         Long instituteId = requireInstituteId(principal);
         return ResponseEntity.ok(instituteService.getHostels(instituteId));
     }
 
     @PostMapping("/hostels")
+    @PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<HostelDto> createHostel(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody Hostel hostel) {
@@ -105,6 +113,7 @@ public class InstituteController {
     }
 
     @GetMapping("/crews")
+    @PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<CrewWorkloadDto>> getCrewWorkloads(@AuthenticationPrincipal UserPrincipal principal) {
         Long instituteId = requireInstituteId(principal);
         return ResponseEntity.ok(instituteService.getCrewWorkloads(instituteId));
@@ -117,6 +126,7 @@ public class InstituteController {
     }
 
     @PostMapping("/departments")
+    @PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<Department> createDepartment(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestBody Department department) {
@@ -124,13 +134,30 @@ public class InstituteController {
         return ResponseEntity.ok(instituteService.createDepartment(instituteId, department));
     }
 
+    @GetMapping("/emergency-contacts")
+    public ResponseEntity<EmergencyContactsDto> getEmergencyContacts(@AuthenticationPrincipal UserPrincipal principal) {
+        Long instituteId = requireInstituteId(principal);
+        return ResponseEntity.ok(instituteService.getEmergencyContacts(instituteId, principal.getHostelId()));
+    }
+
+    @PutMapping("/emergency-contacts")
+    @PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<EmergencyContactsDto> updateEmergencyContacts(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody EmergencyContactsDto dto) {
+        Long instituteId = requireInstituteId(principal);
+        return ResponseEntity.ok(instituteService.updateEmergencyContacts(instituteId, dto));
+    }
+
     @GetMapping("/password-resets")
+    @PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<PasswordResetRequest>> getPasswordResets(@AuthenticationPrincipal UserPrincipal principal) {
         Long instituteId = requireInstituteId(principal);
         return ResponseEntity.ok(instituteService.getPasswordResets(instituteId));
     }
 
     @PostMapping("/password-resets/{id}/approve")
+    @PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<CredentialResponse> approvePasswordReset(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable("id") Long requestId) {
@@ -139,6 +166,7 @@ public class InstituteController {
     }
 
     @PostMapping("/password-resets/{id}/assign")
+    @PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<PasswordResetRequest> assignPasswordReset(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable("id") Long requestId,
@@ -150,6 +178,7 @@ public class InstituteController {
     }
 
     @PostMapping("/password-resets/{id}/reject")
+    @PreAuthorize("hasAnyRole('INSTITUTE_ADMIN', 'ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<Map<String, String>> rejectPasswordReset(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable("id") Long requestId) {

@@ -25,6 +25,15 @@ public class Institute {
     @Column(name = "contact_number", length = 30)
     private String contactNumber;
 
+    @Column(name = "ambulance_contact", length = 30)
+    private String ambulanceContact = "108";
+
+    @Column(name = "security_contact", length = 30)
+    private String securityContact = "112";
+
+    @Column(name = "emergency_desk_contact", length = 30)
+    private String emergencyDeskContact = "+91 11 2766 7722";
+
     @Column(nullable = false, length = 20)
     private String status = "ACTIVE"; // ACTIVE, PENDING, SUSPENDED
 
@@ -63,6 +72,15 @@ public class Institute {
 
     public String getContactNumber() { return contactNumber; }
     public void setContactNumber(String contactNumber) { this.contactNumber = contactNumber; }
+
+    public String getAmbulanceContact() { return ambulanceContact != null && !ambulanceContact.isEmpty() ? ambulanceContact : "108"; }
+    public void setAmbulanceContact(String ambulanceContact) { this.ambulanceContact = ambulanceContact; }
+
+    public String getSecurityContact() { return securityContact != null && !securityContact.isEmpty() ? securityContact : "112"; }
+    public void setSecurityContact(String securityContact) { this.securityContact = securityContact; }
+
+    public String getEmergencyDeskContact() { return emergencyDeskContact != null && !emergencyDeskContact.isEmpty() ? emergencyDeskContact : "+91 11 2766 7722"; }
+    public void setEmergencyDeskContact(String emergencyDeskContact) { this.emergencyDeskContact = emergencyDeskContact; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

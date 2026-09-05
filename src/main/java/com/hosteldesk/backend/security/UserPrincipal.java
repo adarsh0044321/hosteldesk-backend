@@ -20,11 +20,12 @@ public class UserPrincipal implements UserDetails {
     private final AccountStatus status;
     private final Long instituteId;
     private final String instituteCode;
+    private final Long hostelId;
     private final Collection<? extends GrantedAuthority> authorities;
 
     public UserPrincipal(Long id, String fullName, String email, String institutionalId,
                          String password, Role role, AccountStatus status,
-                         Long instituteId, String instituteCode,
+                         Long instituteId, String instituteCode, Long hostelId,
                          Collection<? extends GrantedAuthority> authorities) {
         this.id = id;
         this.fullName = fullName;
@@ -35,6 +36,7 @@ public class UserPrincipal implements UserDetails {
         this.status = status;
         this.instituteId = instituteId;
         this.instituteCode = instituteCode;
+        this.hostelId = hostelId;
         this.authorities = authorities;
     }
 
@@ -56,6 +58,7 @@ public class UserPrincipal implements UserDetails {
 
         Long instId = user.getInstitute() != null ? user.getInstitute().getId() : null;
         String instCode = user.getInstitute() != null ? user.getInstitute().getCode() : null;
+        Long hId = user.getHostel() != null ? user.getHostel().getId() : null;
 
         return new UserPrincipal(
                 user.getId(),
@@ -67,12 +70,14 @@ public class UserPrincipal implements UserDetails {
                 user.getStatus(),
                 instId,
                 instCode,
+                hId,
                 authorities
         );
     }
 
     public Long getId() { return id; }
     public String getFullName() { return fullName; }
+    public Long getHostelId() { return hostelId; }
     public String getEmail() { return email; }
     public String getInstitutionalId() { return institutionalId; }
     public Role getRole() { return role; }

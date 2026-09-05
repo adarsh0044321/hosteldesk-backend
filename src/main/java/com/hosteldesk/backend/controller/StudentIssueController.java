@@ -8,6 +8,7 @@ import com.hosteldesk.backend.exception.ResourceNotFoundException;
 import com.hosteldesk.backend.repository.UserRepository;
 import com.hosteldesk.backend.security.UserPrincipal;
 import com.hosteldesk.backend.service.AnalyticsService;
+import com.hosteldesk.backend.service.InstituteService;
 import com.hosteldesk.backend.service.IssueService;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -26,13 +27,16 @@ public class StudentIssueController {
     private final IssueService issueService;
     private final AnalyticsService analyticsService;
     private final UserRepository userRepository;
+    private final InstituteService instituteService;
 
     public StudentIssueController(IssueService issueService,
                                   AnalyticsService analyticsService,
-                                  UserRepository userRepository) {
+                                  UserRepository userRepository,
+                                  InstituteService instituteService) {
         this.issueService = issueService;
         this.analyticsService = analyticsService;
         this.userRepository = userRepository;
+        this.instituteService = instituteService;
     }
 
     @GetMapping("/dashboard")
@@ -42,15 +46,24 @@ public class StudentIssueController {
         return ResponseEntity.ok(analyticsService.getStudentDashboard(student));
     }
 
+    @GetMapping("/emergency-contacts")
+    public ResponseEntity<EmergencyContactsDto> getEmergencyContacts(@AuthenticationPrincipal UserPrincipal principal) {
+        User student = userRepository.findById(principal.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
+        Long instId = student.getInstitute() != null ? student.getInstitute().getId() : null;
+        Long hostelId = student.getHostel() != null ? student.getHostel().getId() : null;
+        return ResponseEntity.ok(instituteService.getEmergencyContacts(instId, hostelId));
+    }
+
     @PostMapping(value = "/issues", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<IssueDetailDto> createIssue(
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam("title") String title,
-            @RequestParam("description") String description,
-            @RequestParam("category") String category,
+            @RequestParam(value = "description", required = false) String description,
+            @RequestParam(value = "category", required = false) String category,
             @RequestParam(value = "priority", required = false) String priority,
-            @RequestParam("blockName") String blockName,
-            @RequestParam("roomNumber") String roomNumber,
+            @RequestParam(value = "blockName", required = false) String blockName,
+            @RequestParam(value = "roomNumber", required = false) String roomNumber,
             @RequestPart(value = "attachment", required = false) MultipartFile attachment) {
 
         User student = userRepository.findById(principal.getId())
@@ -58,8 +71,8 @@ public class StudentIssueController {
 
         CreateIssueRequest req = new CreateIssueRequest();
         req.setTitle(title);
-        req.setDescription(description);
-        req.setCategory(category);
+        req.setDescription(description != null && !description.trim().isEmpty() ? description : title);
+        req.setCategory(category != null && !category.trim().isEmpty() ? category : "GENERAL");
         req.setBlockName(blockName);
         req.setRoomNumber(roomNumber);
         if (priority != null && !priority.isEmpty()) {

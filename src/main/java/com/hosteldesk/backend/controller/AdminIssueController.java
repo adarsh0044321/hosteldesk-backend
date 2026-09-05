@@ -44,7 +44,9 @@ public class AdminIssueController {
     @GetMapping("/dashboard")
     public ResponseEntity<WardenDashboardDto> getDashboard(@AuthenticationPrincipal UserPrincipal principal) {
         Long instituteId = principal != null ? principal.getInstituteId() : null;
-        return ResponseEntity.ok(analyticsService.getWardenDashboard(instituteId));
+        Long hostelId = principal != null ? principal.getHostelId() : null;
+        com.hosteldesk.backend.entity.Role role = principal != null ? principal.getRole() : null;
+        return ResponseEntity.ok(analyticsService.getWardenDashboard(instituteId, hostelId, role));
     }
 
     @GetMapping("/issues")
@@ -55,6 +57,7 @@ public class AdminIssueController {
             @RequestParam(value = "departmentId", required = false) Long departmentId) {
 
         Long instituteId = principal != null ? principal.getInstituteId() : null;
+        Long hostelId = (principal != null && principal.getRole() == com.hosteldesk.backend.entity.Role.WARDEN) ? principal.getHostelId() : null;
 
         IssueStatus issueStatus = null;
         if (status != null && !status.isEmpty()) {
@@ -70,7 +73,7 @@ public class AdminIssueController {
             } catch (Exception ignored) {}
         }
 
-        return ResponseEntity.ok(issueService.searchAdminIssues(instituteId, issueStatus, issuePriority, departmentId));
+        return ResponseEntity.ok(issueService.searchAdminIssues(instituteId, hostelId, issueStatus, issuePriority, departmentId));
     }
 
     @GetMapping("/issues/{id}")

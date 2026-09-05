@@ -17,6 +17,7 @@ import java.util.Optional;
 @Repository
 public interface IssueRepository extends JpaRepository<Issue, Long> {
     Optional<Issue> findByTicketNumber(String ticketNumber);
+    boolean existsByTicketNumber(String ticketNumber);
 
     List<Issue> findByReportedByIdOrderByCreatedAtDesc(Long studentId);
     Page<Issue> findByReportedByIdOrderByCreatedAtDesc(Long studentId, Pageable pageable);
@@ -43,13 +44,16 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
     long countByInstituteIdAndStatus(Long instituteId, IssueStatus status);
     long countByInstituteIdAndStatusIn(Long instituteId, List<IssueStatus> statuses);
     long countByInstituteIdAndPriority(Long instituteId, IssuePriority priority);
+    long countByHostelIdAndPriority(Long hostelId, IssuePriority priority);
 
     @Query("SELECT i FROM Issue i WHERE (:instituteId IS NULL OR i.institute.id = :instituteId) " +
+           "AND (:hostelId IS NULL OR i.hostel.id = :hostelId) " +
            "AND (:status IS NULL OR i.status = :status) " +
            "AND (:priority IS NULL OR i.priority = :priority) " +
            "AND (:departmentId IS NULL OR i.assignedDepartment.id = :departmentId) " +
            "ORDER BY i.createdAt DESC")
     List<Issue> searchAdminIssues(@Param("instituteId") Long instituteId,
+                                  @Param("hostelId") Long hostelId,
                                   @Param("status") IssueStatus status,
                                   @Param("priority") IssuePriority priority,
                                   @Param("departmentId") Long departmentId);

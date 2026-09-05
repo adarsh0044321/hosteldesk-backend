@@ -67,11 +67,16 @@ public class AnalyticsService {
 
     @Transactional(readOnly = true)
     public WardenDashboardDto getWardenDashboard() {
-        return getWardenDashboard(null);
+        return getWardenDashboard(null, null, null);
     }
 
     @Transactional(readOnly = true)
     public WardenDashboardDto getWardenDashboard(Long instituteId) {
+        return getWardenDashboard(instituteId, null, null);
+    }
+
+    @Transactional(readOnly = true)
+    public WardenDashboardDto getWardenDashboard(Long instituteId, Long hostelId, Role role) {
         WardenDashboardDto dto = new WardenDashboardDto();
 
         List<IssueStatus> activeStatuses = Arrays.asList(
@@ -86,20 +91,24 @@ public class AnalyticsService {
         long resolved;
         long urgentP1;
 
-        if (instituteId != null) {
+        if (role == Role.WARDEN && hostelId != null) {
+            totalOpen = issueRepository.countByHostelIdAndStatusIn(hostelId, activeStatuses);
+            inWork = issueRepository.countByHostelIdAndStatus(hostelId, IssueStatus.IN_PROGRESS);
+            pendingCheck = issueRepository.countByHostelIdAndStatus(hostelId, IssueStatus.AWAITING_VERIFICATION);
+            resolved = issueRepository.countByHostelIdAndStatus(hostelId, IssueStatus.RESOLVED);
+            urgentP1 = issueRepository.countByHostelIdAndPriority(hostelId, IssuePriority.P1_URGENT);
+        } else if (instituteId != null) {
             totalOpen = issueRepository.countByInstituteIdAndStatusIn(instituteId, activeStatuses);
             inWork = issueRepository.countByInstituteIdAndStatus(instituteId, IssueStatus.IN_PROGRESS);
             pendingCheck = issueRepository.countByInstituteIdAndStatus(instituteId, IssueStatus.AWAITING_VERIFICATION);
             resolved = issueRepository.countByInstituteIdAndStatus(instituteId, IssueStatus.RESOLVED);
             urgentP1 = issueRepository.countByInstituteIdAndPriority(instituteId, IssuePriority.P1_URGENT);
         } else {
-            totalOpen = issueRepository.countByStatusIn(activeStatuses);
-            inWork = issueRepository.countByStatus(IssueStatus.IN_PROGRESS);
-            pendingCheck = issueRepository.countByStatus(IssueStatus.AWAITING_VERIFICATION);
-            resolved = issueRepository.countByStatus(IssueStatus.RESOLVED);
-            urgentP1 = issueRepository.findAll().stream()
-                    .filter(i -> i.getPriority() == IssuePriority.P1_URGENT && i.getStatus() != IssueStatus.RESOLVED)
-                    .count();
+            totalOpen = 0;
+            inWork = 0;
+            pendingCheck = 0;
+            resolved = 0;
+            urgentP1 = 0;
         }
 
         dto.setTotalOpenCount(totalOpen);
@@ -115,9 +124,14 @@ public class AnalyticsService {
                 String.format("Active: %d open tickets · %d in-progress · %d urgent", totalOpen, inWork, urgentP1));
 
         // Attention required
-        List<Issue> sourceList = instituteId != null ?
-                issueRepository.findByInstituteIdOrderByCreatedAtDesc(instituteId) :
-                issueRepository.findAll();
+        List<Issue> sourceList;
+        if (role == Role.WARDEN && hostelId != null) {
+            sourceList = issueRepository.findByHostelIdOrderByCreatedAtDesc(hostelId);
+        } else if (instituteId != null) {
+            sourceList = issueRepository.findByInstituteIdOrderByCreatedAtDesc(instituteId);
+        } else {
+            sourceList = Collections.emptyList();
+        }
 
         List<IssueDto> attention = sourceList.stream()
                 .filter(i -> (i.getPriority() == IssuePriority.P1_URGENT || i.getStatus() == IssueStatus.REPORTED || i.getStatus() == IssueStatus.REOPENED)

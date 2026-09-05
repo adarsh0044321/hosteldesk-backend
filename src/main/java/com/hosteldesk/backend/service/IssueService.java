@@ -33,6 +33,7 @@ public class IssueService {
     private final AiIntegrationService aiIntegrationService;
     private final FileStorageService fileStorageService;
     private final NotificationService notificationService;
+    private final HostelRepository hostelRepository;
 
     public IssueService(IssueRepository issueRepository,
                         IssueAttachmentRepository attachmentRepository,
@@ -43,7 +44,8 @@ public class IssueService {
                         RoutingService routingService,
                         AiIntegrationService aiIntegrationService,
                         FileStorageService fileStorageService,
-                        NotificationService notificationService) {
+                        NotificationService notificationService,
+                        HostelRepository hostelRepository) {
         this.issueRepository = issueRepository;
         this.attachmentRepository = attachmentRepository;
         this.aiAnalysisRepository = aiAnalysisRepository;
@@ -54,6 +56,7 @@ public class IssueService {
         this.aiIntegrationService = aiIntegrationService;
         this.fileStorageService = fileStorageService;
         this.notificationService = notificationService;
+        this.hostelRepository = hostelRepository;
     }
 
     @Transactional
@@ -62,16 +65,45 @@ public class IssueService {
 
         long nextNum = 1000 + issueRepository.count() + 1;
         String ticketNumber = "HD-" + nextNum;
+        while (issueRepository.existsByTicketNumber(ticketNumber)) {
+            nextNum++;
+            ticketNumber = "HD-" + nextNum;
+        }
+
+        Hostel hostel = student.getHostel();
+        if (hostel == null && student.getInstitute() != null) {
+            List<Hostel> hostels = hostelRepository.findByInstituteId(student.getInstitute().getId());
+            if (!hostels.isEmpty()) {
+                hostel = hostels.get(0);
+                student.setHostel(hostel);
+                userRepository.save(student);
+            }
+        }
+        if (hostel == null) {
+            List<Hostel> allHostels = hostelRepository.findAll();
+            if (!allHostels.isEmpty()) {
+                hostel = allHostels.get(0);
+                student.setHostel(hostel);
+                userRepository.save(student);
+            }
+        }
+
+        String block = (request.getBlockName() != null && !request.getBlockName().trim().isEmpty())
+                ? request.getBlockName().trim()
+                : (hostel != null ? hostel.getName() : "Main Block");
+        String room = (request.getRoomNumber() != null && !request.getRoomNumber().trim().isEmpty())
+                ? request.getRoomNumber().trim()
+                : (student.getRoomNumber() != null ? student.getRoomNumber() : "101");
 
         Issue issue = new Issue();
         issue.setTicketNumber(ticketNumber);
         issue.setReportedBy(student);
         issue.setInstitute(student.getInstitute());
         issue.setCampus(student.getCampus());
-        issue.setHostel(student.getHostel());
-        issue.setBlockName(request.getBlockName());
-        issue.setRoomNumber(request.getRoomNumber());
-        issue.setCategory(request.getCategory().toUpperCase());
+        issue.setHostel(hostel);
+        issue.setBlockName(block);
+        issue.setRoomNumber(room);
+        issue.setCategory(request.getCategory() != null ? request.getCategory().toUpperCase() : "GENERAL");
         issue.setTitle(request.getTitle());
         issue.setDescription(request.getDescription());
         issue.setPriority(request.getPriority() != null ? request.getPriority() : IssuePriority.P3_MEDIUM);
@@ -142,7 +174,23 @@ public class IssueService {
                 "ISSUE_CREATED", issue
         );
 
-        for (User warden : userRepository.findByRole(Role.WARDEN)) {
+        List<User> wardens;
+        if (student.getInstitute() != null) {
+            wardens = userRepository.findByInstituteIdAndRole(student.getInstitute().getId(), Role.WARDEN);
+            final Long assignedHostelId = hostel != null ? hostel.getId() : null;
+            if (assignedHostelId != null) {
+                List<User> hostelWardens = wardens.stream()
+                        .filter(w -> w.getHostel() != null && assignedHostelId.equals(w.getHostel().getId()))
+                        .collect(Collectors.toList());
+                if (!hostelWardens.isEmpty()) {
+                    wardens = hostelWardens;
+                }
+            }
+        } else {
+            wardens = userRepository.findByRole(Role.WARDEN);
+        }
+
+        for (User warden : wardens) {
             notificationService.createNotification(
                     warden, "New Issue: #" + ticketNumber,
                     String.format("%s in %s Room %s: %s", issue.getCategory(), issue.getBlockName(), issue.getRoomNumber(), issue.getTitle()),
@@ -178,12 +226,17 @@ public class IssueService {
 
     @Transactional(readOnly = true)
     public List<IssueDto> searchAdminIssues(IssueStatus status, IssuePriority priority, Long departmentId) {
-        return searchAdminIssues(null, status, priority, departmentId);
+        return searchAdminIssues(null, null, status, priority, departmentId);
     }
 
     @Transactional(readOnly = true)
     public List<IssueDto> searchAdminIssues(Long instituteId, IssueStatus status, IssuePriority priority, Long departmentId) {
-        return issueRepository.searchAdminIssues(instituteId, status, priority, departmentId)
+        return searchAdminIssues(instituteId, null, status, priority, departmentId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<IssueDto> searchAdminIssues(Long instituteId, Long hostelId, IssueStatus status, IssuePriority priority, Long departmentId) {
+        return issueRepository.searchAdminIssues(instituteId, hostelId, status, priority, departmentId)
                 .stream().map(IssueDto::fromEntity).collect(Collectors.toList());
     }
 

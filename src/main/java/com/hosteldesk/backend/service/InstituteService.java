@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.security.SecureRandom;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.Random;
 import java.util.stream.Collectors;
 
@@ -354,6 +355,15 @@ public class InstituteService {
         Institute institute = instituteRepository.findById(instituteId)
                 .orElseThrow(() -> new ResourceNotFoundException("Institute not found: " + instituteId));
         hostel.setInstitute(institute);
+        if (hostel.getLocation() == null || hostel.getLocation().trim().isEmpty()) {
+            hostel.setLocation("Main Campus");
+        }
+        if (hostel.getDescription() == null || hostel.getDescription().trim().isEmpty()) {
+            hostel.setDescription(hostel.getName() != null ? hostel.getName() + " residential block" : "Campus residential facility");
+        }
+        if (hostel.getActive() == null) {
+            hostel.setActive(true);
+        }
         Hostel saved = hostelRepository.save(hostel);
         return HostelDto.fromEntity(saved);
     }
@@ -473,5 +483,62 @@ public class InstituteService {
         request.setReviewedBy(admin);
         request.setReviewedAt(ZonedDateTime.now());
         passwordResetRequestRepository.save(request);
+    }
+
+    @Transactional(readOnly = true)
+    public com.hosteldesk.backend.dto.EmergencyContactsDto getEmergencyContacts(Long instituteId, Long hostelId) {
+        Institute institute = instituteId != null ? instituteRepository.findById(instituteId).orElse(null) : null;
+        if (institute == null) {
+            institute = instituteRepository.findAll().stream().findFirst().orElse(null);
+        }
+
+        String ambulance = institute != null ? institute.getAmbulanceContact() : "108";
+        String security = institute != null ? institute.getSecurityContact() : "112";
+        String desk = institute != null ? institute.getEmergencyDeskContact() : "+91 11 2766 7722";
+
+        String wardenName = null;
+        String wardenPhone = null;
+        String hostelName = null;
+
+        if (hostelId != null) {
+            Hostel h = hostelRepository.findById(hostelId).orElse(null);
+            if (h != null) {
+                hostelName = h.getName();
+                Optional<User> wardenOpt = userRepository.findFirstByHostelIdAndRole(hostelId, Role.WARDEN);
+                if (wardenOpt.isPresent()) {
+                    wardenName = wardenOpt.get().getFullName();
+                    wardenPhone = wardenOpt.get().getPhone();
+                }
+            }
+        } else if (institute != null) {
+            Optional<User> wardenOpt = userRepository.findByInstituteIdAndRole(institute.getId(), Role.WARDEN).stream().findFirst();
+            if (wardenOpt.isPresent()) {
+                wardenName = wardenOpt.get().getFullName();
+                wardenPhone = wardenOpt.get().getPhone();
+            }
+        }
+
+        return new com.hosteldesk.backend.dto.EmergencyContactsDto(
+                ambulance, security, desk, wardenName, wardenPhone, hostelName
+        );
+    }
+
+    @Transactional
+    public com.hosteldesk.backend.dto.EmergencyContactsDto updateEmergencyContacts(Long instituteId, com.hosteldesk.backend.dto.EmergencyContactsDto dto) {
+        Institute institute = instituteRepository.findById(instituteId)
+                .orElseThrow(() -> new ResourceNotFoundException("Institute not found: " + instituteId));
+
+        if (dto.getAmbulanceContact() != null && !dto.getAmbulanceContact().trim().isEmpty()) {
+            institute.setAmbulanceContact(dto.getAmbulanceContact().trim());
+        }
+        if (dto.getSecurityContact() != null && !dto.getSecurityContact().trim().isEmpty()) {
+            institute.setSecurityContact(dto.getSecurityContact().trim());
+        }
+        if (dto.getEmergencyDeskContact() != null && !dto.getEmergencyDeskContact().trim().isEmpty()) {
+            institute.setEmergencyDeskContact(dto.getEmergencyDeskContact().trim());
+        }
+
+        institute = instituteRepository.save(institute);
+        return getEmergencyContacts(institute.getId(), null);
     }
 }
