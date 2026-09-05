@@ -40,10 +40,7 @@ class IssueStateMachineTest {
         // Find initial sample issue #HD-1038 (which is IN_PROGRESS) or HD-1042 (AWAITING_VERIFICATION)
         IssueDetailDto hd1042 = issueService.getStudentIssues(student.getId(), IssueStatus.AWAITING_VERIFICATION)
                 .stream().findFirst()
-                .map(i -> issueService.getIssueDetail(i.getId(), new com.hosteldesk.backend.security.UserPrincipal(
-                        student.getId(), student.getFullName(), student.getEmail(), student.getInstitutionalId(),
-                        "", Role.STUDENT, student.getStatus(), java.util.List.of()
-                )))
+                .map(i -> issueService.getIssueDetail(i.getId(), com.hosteldesk.backend.security.UserPrincipal.create(student)))
                 .orElseThrow();
 
         // Verify resolution
@@ -61,10 +58,7 @@ class IssueStateMachineTest {
         // HD-1042 is awaiting verification; resident can reopen
         IssueDetailDto hd1042 = issueService.getStudentIssues(student.getId(), null)
                 .stream().filter(i -> i.getTicketNumber().equals("HD-1042")).findFirst()
-                .map(i -> issueService.getIssueDetail(i.getId(), new com.hosteldesk.backend.security.UserPrincipal(
-                        student.getId(), student.getFullName(), student.getEmail(), student.getInstitutionalId(),
-                        "", Role.STUDENT, student.getStatus(), java.util.List.of()
-                )))
+                .map(i -> issueService.getIssueDetail(i.getId(), com.hosteldesk.backend.security.UserPrincipal.create(student)))
                 .orElseThrow();
 
         IssueDetailDto reopened = issueService.reopenIssue(hd1042.getId(), "Still dripping water slowly", student);
@@ -81,10 +75,7 @@ class IssueStateMachineTest {
         // HD-1042 is AWAITING_VERIFICATION, staff cannot startWork directly without it being ASSIGNED or REOPENED
         IssueDetailDto hd1042 = issueService.getStudentIssues(student.getId(), null).stream()
                 .filter(i -> i.getTicketNumber().equals("HD-1042")).findFirst()
-                .map(i -> issueService.getIssueDetail(i.getId(), new com.hosteldesk.backend.security.UserPrincipal(
-                        staff.getId(), staff.getFullName(), staff.getEmail(), staff.getInstitutionalId(),
-                        "", Role.MAINTENANCE_STAFF, staff.getStatus(), java.util.List.of()
-                )))
+                .map(i -> issueService.getIssueDetail(i.getId(), com.hosteldesk.backend.security.UserPrincipal.create(staff)))
                 .orElseThrow();
 
         Assertions.assertThrows(InvalidStateTransitionException.class, () -> issueService.startWork(hd1042.getId(), staff));

@@ -49,4 +49,15 @@ class AuthServiceTest {
         LoginRequest req = new LoginRequest("aarav@campus.edu", "wrongPassword!", "STUDENT");
         Assertions.assertThrows(Exception.class, () -> authService.login(req));
     }
+
+    @Test
+    void testInstitutePublicLookup() {
+        var info = authService.getInstitutePublicInfo("NCH-001");
+        Assertions.assertNotNull(info);
+        Assertions.assertEquals("NCH-001", info.getInstituteCode());
+        Assertions.assertEquals("North Campus Housing Institute", info.getInstituteName());
+        Assertions.assertEquals("North Campus", info.getCampusName());
+        Assertions.assertNotNull(info.getContactNumber());
+    }
 }
+

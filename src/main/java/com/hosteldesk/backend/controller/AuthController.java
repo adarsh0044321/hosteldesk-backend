@@ -1,9 +1,6 @@
 package com.hosteldesk.backend.controller;
 
-import com.hosteldesk.backend.dto.LoginRequest;
-import com.hosteldesk.backend.dto.LoginResponse;
-import com.hosteldesk.backend.dto.RegisterRequest;
-import com.hosteldesk.backend.dto.UserDto;
+import com.hosteldesk.backend.dto.*;
 import com.hosteldesk.backend.security.UserPrincipal;
 import com.hosteldesk.backend.service.AuthService;
 import jakarta.validation.Valid;
@@ -29,6 +26,19 @@ public class AuthController {
         return ResponseEntity.ok(response);
     }
 
+    @PostMapping("/register-institute")
+    public ResponseEntity<LoginResponse> registerInstitute(@Valid @RequestBody RegisterInstituteRequest request) {
+        LoginResponse response = authService.registerInstitute(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/institutes/{code}")
+    public ResponseEntity<InstitutePublicDto> getInstituteByCode(@PathVariable("code") String code) {
+        InstitutePublicDto dto = authService.getInstitutePublicInfo(code);
+        return ResponseEntity.ok(dto);
+    }
+
+
     @PostMapping("/register")
     public ResponseEntity<UserDto> register(@Valid @RequestBody RegisterRequest registerRequest) {
         UserDto userDto = authService.register(registerRequest);
@@ -45,8 +55,19 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    public ResponseEntity<Map<String, String>> forgotPassword(@RequestBody Map<String, String> request) {
-        String email = request.get("email");
-        return ResponseEntity.ok(Map.of("message", "If account exists for " + email + ", reset instructions have been dispatched."));
+    public ResponseEntity<Map<String, String>> forgotPassword(@RequestBody ForgotPasswordRequest request) {
+        authService.requestPasswordReset(request);
+        return ResponseEntity.ok(Map.of("message", "Password reset request submitted to your institution administrator."));
+    }
+
+    @PostMapping("/change-password")
+    public ResponseEntity<Map<String, String>> changePassword(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody ChangePasswordRequest request) {
+        if (principal == null) {
+            return ResponseEntity.status(401).build();
+        }
+        authService.changePassword(principal.getId(), request);
+        return ResponseEntity.ok(Map.of("message", "Password changed successfully."));
     }
 }

@@ -12,6 +12,14 @@ public class Issue {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "institute_id")
+    private Institute institute;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "campus_id")
+    private Campus campus;
+
     @Column(name = "ticket_number", nullable = false, unique = true, length = 50)
     private String ticketNumber;
 
@@ -93,6 +101,12 @@ public class Issue {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public Institute getInstitute() { return institute; }
+    public void setInstitute(Institute institute) { this.institute = institute; }
+
+    public Campus getCampus() { return campus; }
+    public void setCampus(Campus campus) { this.campus = campus; }
 
     public String getTicketNumber() { return ticketNumber; }
     public void setTicketNumber(String ticketNumber) { this.ticketNumber = ticketNumber; }

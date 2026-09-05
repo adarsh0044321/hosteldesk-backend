@@ -4,7 +4,10 @@ import com.fasterxml.jackson.annotation.JsonAlias;
 import jakarta.validation.constraints.NotBlank;
 
 public class LoginRequest {
-    @JsonAlias({"email", "username", "institutionalId", "studentId", "staffId"})
+    @JsonAlias({"institute_id", "instituteCode", "instituteId"})
+    private String instituteCode;
+
+    @JsonAlias({"email", "username", "institutionalId", "studentId", "staffId", "adminId", "wardenId"})
     private String emailOrInstitutionalId;
 
     private String email;
@@ -50,6 +53,9 @@ public class LoginRequest {
             this.emailOrInstitutionalId = email;
         }
     }
+
+    public String getInstituteCode() { return instituteCode != null ? instituteCode.trim() : null; }
+    public void setInstituteCode(String instituteCode) { this.instituteCode = instituteCode; }
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }

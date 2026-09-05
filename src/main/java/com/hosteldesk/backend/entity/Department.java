@@ -10,7 +10,11 @@ public class Department {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, length = 50)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "institute_id")
+    private Institute institute;
+
+    @Column(nullable = false, length = 50)
     private String name;
 
     @Column(name = "display_name", nullable = false, length = 100)
@@ -37,6 +41,9 @@ public class Department {
 
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public Institute getInstitute() { return institute; }
+    public void setInstitute(Institute institute) { this.institute = institute; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

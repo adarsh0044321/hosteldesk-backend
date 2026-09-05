@@ -66,6 +66,8 @@ public class IssueService {
         Issue issue = new Issue();
         issue.setTicketNumber(ticketNumber);
         issue.setReportedBy(student);
+        issue.setInstitute(student.getInstitute());
+        issue.setCampus(student.getCampus());
         issue.setHostel(student.getHostel());
         issue.setBlockName(request.getBlockName());
         issue.setRoomNumber(request.getRoomNumber());
@@ -176,7 +178,12 @@ public class IssueService {
 
     @Transactional(readOnly = true)
     public List<IssueDto> searchAdminIssues(IssueStatus status, IssuePriority priority, Long departmentId) {
-        return issueRepository.searchAdminIssues(status, priority, departmentId)
+        return searchAdminIssues(null, status, priority, departmentId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<IssueDto> searchAdminIssues(Long instituteId, IssueStatus status, IssuePriority priority, Long departmentId) {
+        return issueRepository.searchAdminIssues(instituteId, status, priority, departmentId)
                 .stream().map(IssueDto::fromEntity).collect(Collectors.toList());
     }
 

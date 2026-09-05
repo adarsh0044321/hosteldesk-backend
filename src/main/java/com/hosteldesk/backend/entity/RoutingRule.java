@@ -17,6 +17,10 @@ public class RoutingRule {
     @JoinColumn(name = "department_id", nullable = false)
     private Department department;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "institute_id")
+    private Institute institute;
+
     @Column(name = "default_priority", nullable = false, length = 20)
     private String defaultPriority = "MEDIUM";
 
@@ -44,6 +48,9 @@ public class RoutingRule {
 
     public Department getDepartment() { return department; }
     public void setDepartment(Department department) { this.department = department; }
+
+    public Institute getInstitute() { return institute; }
+    public void setInstitute(Institute institute) { this.institute = institute; }
 
     public String getDefaultPriority() { return defaultPriority; }
     public void setDefaultPriority(String defaultPriority) { this.defaultPriority = defaultPriority; }

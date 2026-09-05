@@ -37,11 +37,20 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
     long countByAssignedDepartmentId(Long departmentId);
     long countByAssignedDepartmentIdAndStatusIn(Long departmentId, List<IssueStatus> statuses);
 
-    @Query("SELECT i FROM Issue i WHERE (:status IS NULL OR i.status = :status) " +
+    // Multi-tenant queries
+    List<Issue> findByInstituteIdOrderByCreatedAtDesc(Long instituteId);
+    long countByInstituteId(Long instituteId);
+    long countByInstituteIdAndStatus(Long instituteId, IssueStatus status);
+    long countByInstituteIdAndStatusIn(Long instituteId, List<IssueStatus> statuses);
+    long countByInstituteIdAndPriority(Long instituteId, IssuePriority priority);
+
+    @Query("SELECT i FROM Issue i WHERE (:instituteId IS NULL OR i.institute.id = :instituteId) " +
+           "AND (:status IS NULL OR i.status = :status) " +
            "AND (:priority IS NULL OR i.priority = :priority) " +
            "AND (:departmentId IS NULL OR i.assignedDepartment.id = :departmentId) " +
            "ORDER BY i.createdAt DESC")
-    List<Issue> searchAdminIssues(@Param("status") IssueStatus status,
+    List<Issue> searchAdminIssues(@Param("instituteId") Long instituteId,
+                                  @Param("status") IssueStatus status,
                                   @Param("priority") IssuePriority priority,
                                   @Param("departmentId") Long departmentId);
 

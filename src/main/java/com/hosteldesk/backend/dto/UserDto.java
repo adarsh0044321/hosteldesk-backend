@@ -12,11 +12,17 @@ public class UserDto {
     private String institutionalId;
     private Role role;
     private AccountStatus status;
+    private Long instituteId;
+    private String instituteCode;
+    private String instituteName;
+    private Long campusId;
+    private String campusName;
     private Long hostelId;
     private String hostelName;
     private Long departmentId;
     private String departmentName;
     private String roomNumber;
+    private Boolean needsPasswordChange = false;
 
     public UserDto() {}
 
@@ -31,6 +37,17 @@ public class UserDto {
         dto.setRole(user.getRole());
         dto.setStatus(user.getStatus());
         dto.setRoomNumber(user.getRoomNumber());
+        dto.setNeedsPasswordChange(user.getNeedsPasswordChange());
+
+        if (user.getInstitute() != null) {
+            dto.setInstituteId(user.getInstitute().getId());
+            dto.setInstituteCode(user.getInstitute().getCode());
+            dto.setInstituteName(user.getInstitute().getName());
+        }
+        if (user.getCampus() != null) {
+            dto.setCampusId(user.getCampus().getId());
+            dto.setCampusName(user.getCampus().getName());
+        }
         if (user.getHostel() != null) {
             dto.setHostelId(user.getHostel().getId());
             dto.setHostelName(user.getHostel().getName());
@@ -63,6 +80,21 @@ public class UserDto {
     public AccountStatus getStatus() { return status; }
     public void setStatus(AccountStatus status) { this.status = status; }
 
+    public Long getInstituteId() { return instituteId; }
+    public void setInstituteId(Long instituteId) { this.instituteId = instituteId; }
+
+    public String getInstituteCode() { return instituteCode; }
+    public void setInstituteCode(String instituteCode) { this.instituteCode = instituteCode; }
+
+    public String getInstituteName() { return instituteName; }
+    public void setInstituteName(String instituteName) { this.instituteName = instituteName; }
+
+    public Long getCampusId() { return campusId; }
+    public void setCampusId(Long campusId) { this.campusId = campusId; }
+
+    public String getCampusName() { return campusName; }
+    public void setCampusName(String campusName) { this.campusName = campusName; }
+
     public Long getHostelId() { return hostelId; }
     public void setHostelId(Long hostelId) { this.hostelId = hostelId; }
 
@@ -77,4 +109,7 @@ public class UserDto {
 
     public String getRoomNumber() { return roomNumber; }
     public void setRoomNumber(String roomNumber) { this.roomNumber = roomNumber; }
+
+    public Boolean getNeedsPasswordChange() { return needsPasswordChange != null && needsPasswordChange; }
+    public void setNeedsPasswordChange(Boolean needsPasswordChange) { this.needsPasswordChange = needsPasswordChange; }
 }

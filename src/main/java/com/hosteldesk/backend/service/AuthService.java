@@ -2,14 +2,14 @@ package com.hosteldesk.backend.service;
 
 import com.hosteldesk.backend.config.AppProperties;
 import com.hosteldesk.backend.dto.*;
-import com.hosteldesk.backend.entity.AccountStatus;
-import com.hosteldesk.backend.entity.Hostel;
-import com.hosteldesk.backend.entity.Role;
-import com.hosteldesk.backend.entity.User;
+import com.hosteldesk.backend.entity.*;
 import com.hosteldesk.backend.exception.BadRequestException;
 import com.hosteldesk.backend.exception.ForbiddenException;
 import com.hosteldesk.backend.exception.ResourceNotFoundException;
+import com.hosteldesk.backend.repository.CampusRepository;
 import com.hosteldesk.backend.repository.HostelRepository;
+import com.hosteldesk.backend.repository.InstituteRepository;
+import com.hosteldesk.backend.repository.PasswordResetRequestRepository;
 import com.hosteldesk.backend.repository.UserRepository;
 import com.hosteldesk.backend.security.JwtTokenProvider;
 import com.hosteldesk.backend.security.UserPrincipal;
@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.ZonedDateTime;
+import java.util.UUID;
 
 @Service
 public class AuthService {
@@ -29,6 +30,9 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final UserRepository userRepository;
     private final HostelRepository hostelRepository;
+    private final InstituteRepository instituteRepository;
+    private final CampusRepository campusRepository;
+    private final PasswordResetRequestRepository passwordResetRequestRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider tokenProvider;
     private final AppProperties appProperties;
@@ -36,12 +40,18 @@ public class AuthService {
     public AuthService(AuthenticationManager authenticationManager,
                        UserRepository userRepository,
                        HostelRepository hostelRepository,
+                       InstituteRepository instituteRepository,
+                       CampusRepository campusRepository,
+                       PasswordResetRequestRepository passwordResetRequestRepository,
                        PasswordEncoder passwordEncoder,
                        JwtTokenProvider tokenProvider,
                        AppProperties appProperties) {
         this.authenticationManager = authenticationManager;
         this.userRepository = userRepository;
         this.hostelRepository = hostelRepository;
+        this.instituteRepository = instituteRepository;
+        this.campusRepository = campusRepository;
+        this.passwordResetRequestRepository = passwordResetRequestRepository;
         this.passwordEncoder = passwordEncoder;
         this.tokenProvider = tokenProvider;
         this.appProperties = appProperties;
@@ -51,19 +61,39 @@ public class AuthService {
     public LoginResponse login(LoginRequest request) {
         String identifier = request.getEmailOrInstitutionalId();
         if (identifier == null || identifier.trim().isEmpty()) {
-            throw new BadRequestException("Email or Institutional ID is required");
+            throw new BadRequestException("Email, Student ID, or Staff ID is required");
         }
 
-        User user = userRepository.findByEmailOrInstitutionalId(identifier, identifier)
-                .orElseThrow(() -> new BadRequestException("Invalid email/institutional ID or password"));
+        String instituteCode = request.getInstituteCode();
+        User user;
+
+        if (instituteCode != null && !instituteCode.trim().isEmpty()) {
+            Institute institute = instituteRepository.findByCode(instituteCode.trim())
+                    .orElseThrow(() -> new BadRequestException("Institute not found with ID: " + instituteCode));
+
+            if (!"ACTIVE".equalsIgnoreCase(institute.getStatus())) {
+                throw new ForbiddenException("Institute account is " + institute.getStatus() + ". Please contact administrator.");
+            }
+
+            user = userRepository.findByInstituteCodeAndInstitutionalId(institute.getCode(), identifier)
+                    .or(() -> userRepository.findByInstituteCodeAndEmail(institute.getCode(), identifier))
+                    .orElseThrow(() -> new BadRequestException("Invalid credentials or user does not belong to institute " + instituteCode));
+        } else {
+            // Fallback for single-tenant / existing legacy calls
+            user = userRepository.findByEmailOrInstitutionalId(identifier, identifier)
+                    .orElseThrow(() -> new BadRequestException("Invalid email/institutional ID or password"));
+        }
 
         if (user.getStatus() != AccountStatus.ACTIVE) {
-            throw new ForbiddenException("Account is " + user.getStatus() + ". Please contact hostel administrator.");
+            throw new ForbiddenException("Account is " + user.getStatus() + ". Please contact administrator.");
         }
 
-        // Strict role segregation: Reject students attempting to log into Admin application
+        // Strict role boundary enforcement
         if ("ADMIN".equalsIgnoreCase(request.getTargetApp()) && user.getRole() == Role.STUDENT) {
             throw new ForbiddenException("Access Denied: Student accounts are not permitted to access the HostelDesk Admin application.");
+        }
+        if ("STUDENT".equalsIgnoreCase(request.getTargetApp()) && user.getRole() != Role.STUDENT) {
+            throw new ForbiddenException("Please use the HostelDesk Admin application to log in with administrative or staff credentials.");
         }
 
         Authentication authentication = authenticationManager.authenticate(
@@ -80,6 +110,98 @@ public class AuthService {
     }
 
     @Transactional
+    public LoginResponse registerInstitute(RegisterInstituteRequest request) {
+        String code = request.getInstituteCode();
+        if (code == null || code.trim().isEmpty()) {
+            code = "INST-" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+        } else {
+            code = code.trim().toUpperCase();
+        }
+
+        if (instituteRepository.existsByCode(code)) {
+            throw new BadRequestException("Institute ID '" + code + "' is already registered. Please choose another.");
+        }
+        if (userRepository.existsByEmail(request.getAdminEmail())) {
+            throw new BadRequestException("Administrator email is already registered: " + request.getAdminEmail());
+        }
+
+        Institute institute = new Institute();
+        institute.setCode(code);
+        institute.setName(request.getInstituteName());
+        institute.setType(request.getInstituteType() != null ? request.getInstituteType() : "UNIVERSITY");
+        institute.setEmail(request.getInstituteEmail());
+        institute.setContactNumber(request.getContactNumber());
+        institute.setStatus("ACTIVE");
+        Institute savedInstitute = instituteRepository.save(institute);
+
+        // Create default campus
+        Campus campus = new Campus();
+        campus.setInstitute(savedInstitute);
+        campus.setCode("MAIN");
+        campus.setName("Main Campus");
+        campusRepository.save(campus);
+
+        // Create Institute Administrator
+        User admin = new User();
+        admin.setFullName(request.getAdminName());
+        admin.setEmail(request.getAdminEmail());
+        admin.setInstitutionalId(request.getAdminId());
+        admin.setPasswordHash(passwordEncoder.encode(request.getPassword()));
+        admin.setRole(Role.INSTITUTE_ADMIN);
+        admin.setStatus(AccountStatus.ACTIVE);
+        admin.setInstitute(savedInstitute);
+        admin.setCampus(campus);
+        userRepository.save(admin);
+
+        Authentication authentication = authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(admin.getEmail(), request.getPassword())
+        );
+        SecurityContextHolder.getContext().setAuthentication(authentication);
+
+        String jwt = tokenProvider.generateToken(authentication);
+        return new LoginResponse(jwt, appProperties.getJwt().getExpirationMs() / 1000, UserDto.fromEntity(admin));
+    }
+
+    @Transactional
+    public void requestPasswordReset(ForgotPasswordRequest request) {
+        String instituteCode = request.getInstituteCode();
+        if (instituteCode == null || instituteCode.trim().isEmpty()) {
+            throw new BadRequestException("Institute ID is required for password reset");
+        }
+
+        Institute institute = instituteRepository.findByCode(instituteCode.trim())
+                .orElseThrow(() -> new BadRequestException("Institute not found: " + instituteCode));
+
+        User user = userRepository.findByInstituteCodeAndInstitutionalId(institute.getCode(), request.getIdentifier())
+                .or(() -> userRepository.findByInstituteCodeAndEmail(institute.getCode(), request.getIdentifier()))
+                .orElseThrow(() -> new BadRequestException("User not found in institute: " + request.getIdentifier()));
+
+        PasswordResetRequest resetRequest = new PasswordResetRequest(
+                institute,
+                user,
+                user.getRole().name(),
+                request.getReason() != null ? request.getReason() : "Forgotten credentials"
+        );
+        passwordResetRequestRepository.save(resetRequest);
+    }
+
+    @Transactional
+    public void changePassword(Long userId, ChangePasswordRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+
+        if (request.getOldPassword() != null && !request.getOldPassword().isEmpty()) {
+            if (!passwordEncoder.matches(request.getOldPassword(), user.getPasswordHash())) {
+                throw new BadRequestException("Current password does not match");
+            }
+        }
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        user.setNeedsPasswordChange(false);
+        userRepository.save(user);
+    }
+
+    @Transactional
     public UserDto register(RegisterRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new BadRequestException("Email is already registered: " + request.getEmail());
@@ -93,6 +215,8 @@ public class AuthService {
             hostel = hostelRepository.findById(request.getHostelId()).orElse(null);
         }
 
+        Institute defaultInst = instituteRepository.findByCode("NCH-001").orElse(null);
+
         User user = new User();
         user.setFullName(request.getFullName());
         user.setEmail(request.getEmail());
@@ -102,6 +226,7 @@ public class AuthService {
         user.setRole(request.getRole() != null ? request.getRole() : Role.STUDENT);
         user.setStatus(AccountStatus.ACTIVE);
         user.setHostel(hostel);
+        user.setInstitute(defaultInst != null ? defaultInst : (hostel != null ? hostel.getInstitute() : null));
         user.setRoomNumber(request.getRoomNumber());
 
         User saved = userRepository.save(user);
@@ -114,4 +239,28 @@ public class AuthService {
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + principal.getId()));
         return UserDto.fromEntity(user);
     }
+
+    @Transactional(readOnly = true)
+    public InstitutePublicDto getInstitutePublicInfo(String code) {
+        if (code == null || code.trim().isEmpty()) {
+            throw new BadRequestException("Institute code is required");
+        }
+        Institute institute = instituteRepository.findByCode(code.trim().toUpperCase())
+                .orElseThrow(() -> new ResourceNotFoundException("Institute not found with code: " + code));
+
+        String campusName = campusRepository.findByInstituteId(institute.getId()).stream()
+                .map(Campus::getName)
+                .findFirst()
+                .orElse("Main Campus");
+
+        return new InstitutePublicDto(
+                institute.getCode(),
+                institute.getName(),
+                campusName,
+                institute.getContactNumber() != null ? institute.getContactNumber() : "+91 11 2766 7722",
+                institute.getEmail(),
+                institute.getStatus()
+        );
+    }
 }
+

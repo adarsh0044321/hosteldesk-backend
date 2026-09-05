@@ -30,15 +30,22 @@ public class JwtTokenProvider {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + appProperties.getJwt().getExpirationMs());
 
-        return Jwts.builder()
+        JwtBuilder builder = Jwts.builder()
                 .subject(Long.toString(userPrincipal.getId()))
                 .claim("email", userPrincipal.getEmail())
                 .claim("institutionalId", userPrincipal.getInstitutionalId())
                 .claim("role", userPrincipal.getRole().name())
                 .issuedAt(now)
-                .expiration(expiryDate)
-                .signWith(key)
-                .compact();
+                .expiration(expiryDate);
+
+        if (userPrincipal.getInstituteId() != null) {
+            builder.claim("instituteId", userPrincipal.getInstituteId());
+        }
+        if (userPrincipal.getInstituteCode() != null) {
+            builder.claim("instituteCode", userPrincipal.getInstituteCode());
+        }
+
+        return builder.signWith(key).compact();
     }
 
     public Long getUserIdFromJWT(String token) {

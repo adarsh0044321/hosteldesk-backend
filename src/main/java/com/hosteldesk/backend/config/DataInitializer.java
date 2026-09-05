@@ -4,6 +4,7 @@ import com.hosteldesk.backend.entity.*;
 import com.hosteldesk.backend.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -16,6 +17,8 @@ import java.time.ZonedDateTime;
 public class DataInitializer implements CommandLineRunner {
     private static final Logger log = LoggerFactory.getLogger(DataInitializer.class);
 
+    private final InstituteRepository instituteRepository;
+    private final CampusRepository campusRepository;
     private final HostelRepository hostelRepository;
     private final BlockRepository blockRepository;
     private final RoomRepository roomRepository;
@@ -29,7 +32,12 @@ public class DataInitializer implements CommandLineRunner {
     private final InfrastructureInsightRepository insightRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public DataInitializer(HostelRepository hostelRepository,
+    @Value("${app.seed-demo-data:true}")
+    private boolean seedDemoData;
+
+    public DataInitializer(InstituteRepository instituteRepository,
+                           CampusRepository campusRepository,
+                           HostelRepository hostelRepository,
                            BlockRepository blockRepository,
                            RoomRepository roomRepository,
                            DepartmentRepository departmentRepository,
@@ -41,6 +49,8 @@ public class DataInitializer implements CommandLineRunner {
                            NotificationRepository notificationRepository,
                            InfrastructureInsightRepository insightRepository,
                            PasswordEncoder passwordEncoder) {
+        this.instituteRepository = instituteRepository;
+        this.campusRepository = campusRepository;
         this.hostelRepository = hostelRepository;
         this.blockRepository = blockRepository;
         this.roomRepository = roomRepository;
@@ -60,11 +70,51 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) {
         log.info("Checking and initializing database seed data...");
 
+        // 0. Primary Institute & Campus
+        Institute defaultInstitute = instituteRepository.findByCode("NCH-001")
+                .orElseGet(() -> {
+                    Institute inst = new Institute(
+                            null, "NCH-001", "North Campus Housing Institute",
+                            "UNIVERSITY", "admin@campus.edu", "+91 11 2766 7722", "ACTIVE"
+                    );
+                    return instituteRepository.save(inst);
+                });
+        if (defaultInstitute.getContactNumber() == null || defaultInstitute.getContactNumber().contains("1-800")) {
+            defaultInstitute.setContactNumber("+91 11 2766 7722");
+            instituteRepository.save(defaultInstitute);
+        }
+
+
+
+        Campus northCampus = campusRepository.findByInstituteId(defaultInstitute.getId()).stream()
+                .findFirst()
+                .orElseGet(() -> {
+                    Campus c = new Campus(null, defaultInstitute, "NC", "North Campus");
+                    return campusRepository.save(c);
+                });
+
         // 1. Hostels
         Hostel tagoreHall = hostelRepository.findByName("Tagore Hall")
-                .orElseGet(() -> hostelRepository.save(new Hostel(null, "Tagore Hall", "North Campus", "Primary undergraduate residence", true)));
+                .orElseGet(() -> {
+                    Hostel h = new Hostel(null, defaultInstitute, northCampus, "Tagore Hall", "North Campus", "Primary undergraduate residence", true);
+                    return hostelRepository.save(h);
+                });
+        if (tagoreHall.getInstitute() == null) {
+            tagoreHall.setInstitute(defaultInstitute);
+            tagoreHall.setCampus(northCampus);
+            hostelRepository.save(tagoreHall);
+        }
+
         Hostel shastriHall = hostelRepository.findByName("Shastri Hall")
-                .orElseGet(() -> hostelRepository.save(new Hostel(null, "Shastri Hall", "North Campus", "Postgraduate residence", true)));
+                .orElseGet(() -> {
+                    Hostel h = new Hostel(null, defaultInstitute, northCampus, "Shastri Hall", "North Campus", "Postgraduate residence", true);
+                    return hostelRepository.save(h);
+                });
+        if (shastriHall.getInstitute() == null) {
+            shastriHall.setInstitute(defaultInstitute);
+            shastriHall.setCampus(northCampus);
+            hostelRepository.save(shastriHall);
+        }
 
         // 2. Blocks
         Block blockA = blockRepository.findByHostelIdAndName(tagoreHall.getId(), "Block A")
@@ -77,67 +127,130 @@ public class DataInitializer implements CommandLineRunner {
                 .orElseGet(() -> roomRepository.save(new Room(null, blockB, "204", 2)));
 
         // 4. Departments
-        Department plumbing = departmentRepository.findByName("PLUMBING")
-                .orElseGet(() -> departmentRepository.save(new Department(null, "PLUMBING", "Plumbing & Water Supply", "Water leaks and sanitation", true)));
-        Department electrical = departmentRepository.findByName("ELECTRICAL")
-                .orElseGet(() -> departmentRepository.save(new Department(null, "ELECTRICAL", "Electrical & Power Operations", "Power and wiring safety", true)));
-        Department carpentry = departmentRepository.findByName("CARPENTRY")
-                .orElseGet(() -> departmentRepository.save(new Department(null, "CARPENTRY", "Carpentry & Furniture", "Locks and furniture", true)));
-        Department cleaning = departmentRepository.findByName("CLEANING")
-                .orElseGet(() -> departmentRepository.save(new Department(null, "CLEANING", "Housekeeping & Sanitation", "Corridor and washroom sanitation", true)));
-        Department internet = departmentRepository.findByName("INTERNET")
-                .orElseGet(() -> departmentRepository.save(new Department(null, "INTERNET", "IT & Campus Network", "Wi-Fi and LAN connectivity", true)));
-        Department civil = departmentRepository.findByName("CIVIL")
-                .orElseGet(() -> departmentRepository.save(new Department(null, "CIVIL", "Civil Infrastructure", "Masonry and dampness", true)));
-        Department general = departmentRepository.findByName("GENERAL")
-                .orElseGet(() -> departmentRepository.save(new Department(null, "GENERAL", "General Operations & Warden Desk", "General hostel complaints", true)));
+        Department plumbing = getOrCreateDepartment("PLUMBING", "Plumbing & Water Supply", "Water leaks and sanitation", defaultInstitute);
+        Department electrical = getOrCreateDepartment("ELECTRICAL", "Electrical & Power Operations", "Power and wiring safety", defaultInstitute);
+        Department carpentry = getOrCreateDepartment("CARPENTRY", "Carpentry & Furniture", "Locks and furniture", defaultInstitute);
+        Department cleaning = getOrCreateDepartment("CLEANING", "Housekeeping & Sanitation", "Corridor and washroom sanitation", defaultInstitute);
+        Department internet = getOrCreateDepartment("INTERNET", "IT & Campus Network", "Wi-Fi and LAN connectivity", defaultInstitute);
+        Department civil = getOrCreateDepartment("CIVIL", "Civil Infrastructure", "Masonry and dampness", defaultInstitute);
+        Department general = getOrCreateDepartment("GENERAL", "General Operations & Warden Desk", "General hostel complaints", defaultInstitute);
 
         // 5. Routing Rules
-        createRoutingRuleIfNotExists("PLUMBING", plumbing, "P2_HIGH");
-        createRoutingRuleIfNotExists("ELECTRICAL", electrical, "P1_URGENT");
-        createRoutingRuleIfNotExists("CARPENTRY", carpentry, "P3_MEDIUM");
-        createRoutingRuleIfNotExists("CLEANING", cleaning, "P3_MEDIUM");
-        createRoutingRuleIfNotExists("INTERNET", internet, "P3_MEDIUM");
-        createRoutingRuleIfNotExists("CIVIL", civil, "P3_MEDIUM");
-        createRoutingRuleIfNotExists("GENERAL", general, "P3_MEDIUM");
+        createRoutingRuleIfNotExists("PLUMBING", plumbing, "P2_HIGH", defaultInstitute);
+        createRoutingRuleIfNotExists("ELECTRICAL", electrical, "P1_URGENT", defaultInstitute);
+        createRoutingRuleIfNotExists("CARPENTRY", carpentry, "P3_MEDIUM", defaultInstitute);
+        createRoutingRuleIfNotExists("CLEANING", cleaning, "P3_MEDIUM", defaultInstitute);
+        createRoutingRuleIfNotExists("INTERNET", internet, "P3_MEDIUM", defaultInstitute);
+        createRoutingRuleIfNotExists("CIVIL", civil, "P3_MEDIUM", defaultInstitute);
+        createRoutingRuleIfNotExists("GENERAL", general, "P3_MEDIUM", defaultInstitute);
 
         // 6. Users
         User student = userRepository.findByEmail("aarav@campus.edu")
-                .orElseGet(() -> userRepository.save(new User(
-                        null, "Aarav Patel", "aarav@campus.edu", "+91 98765 43210", "ST-8819",
-                        passwordEncoder.encode("student123"), Role.STUDENT, AccountStatus.ACTIVE,
-                        tagoreHall, null, "204"
-                )));
+                .orElseGet(() -> {
+                    User u = new User(
+                            null, "Aarav Patel", "aarav@campus.edu", "+91 98765 43210", "ST-8819",
+                            passwordEncoder.encode("student123"), Role.STUDENT, AccountStatus.ACTIVE,
+                            tagoreHall, null, "204"
+                    );
+                    u.setInstitute(defaultInstitute);
+                    u.setCampus(northCampus);
+                    return userRepository.save(u);
+                });
+        if (student.getInstitute() == null) {
+            student.setInstitute(defaultInstitute);
+            userRepository.save(student);
+        }
 
         User warden = userRepository.findByEmail("warden.sharma@campus.edu")
-                .orElseGet(() -> userRepository.save(new User(
-                        null, "Warden R. Sharma", "warden.sharma@campus.edu", "+91 98765 00001", "WR-1001",
-                        passwordEncoder.encode("warden123"), Role.WARDEN, AccountStatus.ACTIVE,
-                        tagoreHall, null, null
-                )));
+                .orElseGet(() -> {
+                    User u = new User(
+                            null, "Warden R. Sharma", "warden.sharma@campus.edu", "+91 98765 00001", "WR-1001",
+                            passwordEncoder.encode("warden123"), Role.WARDEN, AccountStatus.ACTIVE,
+                            tagoreHall, null, null
+                    );
+                    u.setInstitute(defaultInstitute);
+                    u.setCampus(northCampus);
+                    return userRepository.save(u);
+                });
+        if (warden.getInstitute() == null) {
+            warden.setInstitute(defaultInstitute);
+            userRepository.save(warden);
+        }
 
         User staff = userRepository.findByEmail("suresh@campus.edu")
-                .orElseGet(() -> userRepository.save(new User(
-                        null, "Suresh Kumar", "suresh@campus.edu", "+91 98765 11112", "STF-201",
-                        passwordEncoder.encode("staff123"), Role.MAINTENANCE_STAFF, AccountStatus.ACTIVE,
-                        tagoreHall, plumbing, null
-                )));
+                .orElseGet(() -> {
+                    User u = new User(
+                            null, "Suresh Kumar", "suresh@campus.edu", "+91 98765 11112", "STF-201",
+                            passwordEncoder.encode("staff123"), Role.STAFF, AccountStatus.ACTIVE,
+                            tagoreHall, plumbing, null
+                    );
+                    u.setInstitute(defaultInstitute);
+                    u.setCampus(northCampus);
+                    return userRepository.save(u);
+                });
+        if (staff.getInstitute() == null) {
+            staff.setInstitute(defaultInstitute);
+            userRepository.save(staff);
+        }
 
-        userRepository.findByEmail("admin@campus.edu")
-                .orElseGet(() -> userRepository.save(new User(
-                        null, "System Administrator", "admin@campus.edu", "+91 98765 99999", "ADM-001",
-                        passwordEncoder.encode("admin123"), Role.ADMIN, AccountStatus.ACTIVE,
-                        null, null, null
-                )));
+        User admin = userRepository.findByEmail("admin@campus.edu")
+                .orElseGet(() -> {
+                    User u = new User(
+                            null, "System Administrator", "admin@campus.edu", "+91 98765 99999", "ADM-001",
+                            passwordEncoder.encode("admin123"), Role.INSTITUTE_ADMIN, AccountStatus.ACTIVE,
+                            null, null, null
+                    );
+                    u.setInstitute(defaultInstitute);
+                    u.setCampus(northCampus);
+                    return userRepository.save(u);
+                });
+        if (admin.getInstitute() == null) {
+            admin.setInstitute(defaultInstitute);
+            userRepository.save(admin);
+        }
 
-        // 7. Seed Initial Sample Issues for realistic demo experience
+        // Development-only seed accounts (admin / admin, student / student)
+        if (seedDemoData) {
+            userRepository.findByInstitutionalId("admin")
+                    .orElseGet(() -> {
+                        User devAdmin = new User();
+                        devAdmin.setFullName("Dev Admin");
+                        devAdmin.setEmail("admin.dev@campus.edu");
+                        devAdmin.setInstitutionalId("admin");
+                        devAdmin.setPasswordHash(passwordEncoder.encode("admin"));
+                        devAdmin.setRole(Role.INSTITUTE_ADMIN);
+                        devAdmin.setStatus(AccountStatus.ACTIVE);
+                        devAdmin.setInstitute(defaultInstitute);
+                        devAdmin.setCampus(northCampus);
+                        return userRepository.save(devAdmin);
+                    });
+
+            userRepository.findByInstitutionalId("student")
+                    .orElseGet(() -> {
+                        User devStudent = new User();
+                        devStudent.setFullName("Dev Student");
+                        devStudent.setEmail("student.dev@campus.edu");
+                        devStudent.setInstitutionalId("student");
+                        devStudent.setPasswordHash(passwordEncoder.encode("student"));
+                        devStudent.setRole(Role.STUDENT);
+                        devStudent.setStatus(AccountStatus.ACTIVE);
+                        devStudent.setInstitute(defaultInstitute);
+                        devStudent.setCampus(northCampus);
+                        devStudent.setHostel(tagoreHall);
+                        devStudent.setRoomNumber("204");
+                        return userRepository.save(devStudent);
+                    });
+        }
+
+        // 7. Seed Initial Sample Issues
         if (issueRepository.count() == 0) {
             log.info("Seeding initial reference issues (#HD-1042, #HD-1038, #HD-4819)...");
 
-            // Issue 1: HD-1042 (Awaiting student verification)
             Issue issue1 = new Issue();
             issue1.setTicketNumber("HD-1042");
             issue1.setReportedBy(student);
+            issue1.setInstitute(defaultInstitute);
+            issue1.setCampus(northCampus);
             issue1.setHostel(tagoreHall);
             issue1.setBlockName("Block B");
             issue1.setRoomNumber("204");
@@ -152,7 +265,6 @@ public class DataInitializer implements CommandLineRunner {
             issue1.setCreatedAt(ZonedDateTime.now().minusHours(3));
             issue1 = issueRepository.save(issue1);
 
-            // AI Analysis for Issue 1
             IssueAiAnalysis ai1 = new IssueAiAnalysis(
                     null, issue1, "PLUMBING", "P1_URGENT", "PLUMBING",
                     "Water leakage detected near electrical fixture, poses potential hazard.",
@@ -160,61 +272,36 @@ public class DataInitializer implements CommandLineRunner {
             );
             aiAnalysisRepository.save(ai1);
 
-            // Activities for Issue 1
-            activityRepository.save(new IssueActivity(null, issue1, student, "REPORTED", "Issue submitted by Aarav Patel"));
-            activityRepository.save(new IssueActivity(null, issue1, null, "ANALYZED", "AI classified as PLUMBING (P1 Urgent)"));
-            activityRepository.save(new IssueActivity(null, issue1, warden, "ASSIGNED", "Assigned to Tech Suresh Kumar (Plumbing)"));
-            activityRepository.save(new IssueActivity(null, issue1, staff, "IN_PROGRESS", "Work started on ceiling pipe joint"));
-            activityRepository.save(new IssueActivity(null, issue1, staff, "COMPLETED", "Work completed. Submitted for student verification."));
+            activityRepository.save(new IssueActivity(null, issue1, student, "REPORTED", "Issue #HD-1042 submitted by Aarav Patel"));
+            activityRepository.save(new IssueActivity(null, issue1, warden, "ASSIGNED", "Assigned to Plumbing (Tech: Suresh Kumar)"));
+            activityRepository.save(new IssueActivity(null, issue1, staff, "IN_PROGRESS", "Tech Suresh Kumar arrived on site and inspected upper floor connection."));
+            activityRepository.save(new IssueActivity(null, issue1, staff, "RESOLVED", "Replaced faulty drainage seal on upper floor connection. Tested water flow for 15 minutes, sealed and dry."));
 
-            // Issue 2: HD-1038 (In Progress)
-            Issue issue2 = new Issue();
-            issue2.setTicketNumber("HD-1038");
-            issue2.setReportedBy(student);
-            issue2.setHostel(tagoreHall);
-            issue2.setBlockName("Block B");
-            issue2.setRoomNumber("204");
-            issue2.setCategory("ELECTRICAL");
-            issue2.setTitle("Ceiling fan regulator sparking");
-            issue2.setDescription("The speed regulator sparks when rotated to speed 3 and smells faintly burnt.");
-            issue2.setPriority(IssuePriority.P2_HIGH);
-            issue2.setStatus(IssueStatus.IN_PROGRESS);
-            issue2.setAssignedDepartment(electrical);
-            issue2.setTechnicianNotes("Regulator switch ordered from stores.");
-            issue2.setCreatedAt(ZonedDateTime.now().minusDays(1));
-            issue2 = issueRepository.save(issue2);
-
-            activityRepository.save(new IssueActivity(null, issue2, student, "REPORTED", "Reported by Aarav Patel"));
-            activityRepository.save(new IssueActivity(null, issue2, warden, "ASSIGNED", "Assigned to Electrical Department"));
-
-            // Notifications
             notificationRepository.save(new Notification(
-                    null, student, "Repair Ready for Verification",
-                    "Caretaker Suresh Kumar finished work on #HD-1042. Please check your ceiling and confirm.",
-                    "VERIFICATION_REQUEST", issue1, false
-            ));
-            notificationRepository.save(new Notification(
-                    null, student, "Part Ordered for #HD-1038",
-                    "Replacement fan regulator switch has been requisitioned from central stores.",
-                    "WORK_PROGRESS", issue2, true
-            ));
-
-            // 8. Seed Recurring Insight
-            insightRepository.save(new InfrastructureInsight(
-                    null, tagoreHall, "Block B", "PLUMBING", 7, 14,
-                    "7 plumbing complaints in 14 days across Rooms 201-206",
-                    "Shared vertical drainage stack line pressure drop",
-                    "Inspect vertical riser shaft above 2nd floor corridor",
-                    ZonedDateTime.now().minusDays(1)
+                    null, student, "Verification Required: HD-1042",
+                    "Plumbing repair completed. Please verify if the water leakage in Room 204 has been resolved.",
+                    "ISSUE_RESOLVED", issue1, false
             ));
         }
 
         log.info("Database seed initialization completed successfully.");
     }
 
-    private void createRoutingRuleIfNotExists(String category, Department dept, String priority) {
-        if (routingRuleRepository.findByCategoryAndActiveTrue(category).isEmpty()) {
-            routingRuleRepository.save(new RoutingRule(null, category, dept, priority, true));
-        }
+    private Department getOrCreateDepartment(String name, String displayName, String description, Institute institute) {
+        return departmentRepository.findByName(name)
+                .orElseGet(() -> {
+                    Department d = new Department(null, name, displayName, description, true);
+                    d.setInstitute(institute);
+                    return departmentRepository.save(d);
+                });
+    }
+
+    private void createRoutingRuleIfNotExists(String category, Department department, String defaultPriority, Institute institute) {
+        routingRuleRepository.findByCategory(category)
+                .orElseGet(() -> {
+                    RoutingRule rule = new RoutingRule(null, category, department, defaultPriority, true);
+                    rule.setInstitute(institute);
+                    return routingRuleRepository.save(rule);
+                });
     }
 }

@@ -8,5 +8,7 @@ public enum IssueStatus {
     IN_PROGRESS,
     AWAITING_VERIFICATION,
     RESOLVED,
-    REOPENED
+    VERIFIED,
+    REOPENED,
+    CANCELLED
 }

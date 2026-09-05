@@ -17,4 +17,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
     boolean existsByInstitutionalId(String institutionalId);
     List<User> findByRole(Role role);
     List<User> findByDepartmentId(Long departmentId);
+
+    // Multi-tenant isolation queries
+    Optional<User> findByInstituteCodeAndInstitutionalId(String instituteCode, String institutionalId);
+    Optional<User> findByInstituteCodeAndEmail(String instituteCode, String email);
+    Optional<User> findByInstituteIdAndInstitutionalId(Long instituteId, String institutionalId);
+    List<User> findByInstituteIdAndRole(Long instituteId, Role role);
+    List<User> findByInstituteId(Long instituteId);
+    long countByInstituteIdAndRole(Long instituteId, Role role);
 }

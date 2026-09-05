@@ -10,6 +10,14 @@ public class Hostel {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "institute_id")
+    private Institute institute;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "campus_id")
+    private Campus campus;
+
     @Column(nullable = false, length = 100)
     private String name;
 
@@ -35,8 +43,24 @@ public class Hostel {
         this.active = active;
     }
 
+    public Hostel(Long id, Institute institute, Campus campus, String name, String location, String description, Boolean active) {
+        this.id = id;
+        this.institute = institute;
+        this.campus = campus;
+        this.name = name;
+        this.location = location;
+        this.description = description;
+        this.active = active;
+    }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
+
+    public Institute getInstitute() { return institute; }
+    public void setInstitute(Institute institute) { this.institute = institute; }
+
+    public Campus getCampus() { return campus; }
+    public void setCampus(Campus campus) { this.campus = campus; }
 
     public String getName() { return name; }
     public void setName(String name) { this.name = name; }

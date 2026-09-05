@@ -9,4 +9,6 @@ import java.util.Optional;
 @Repository
 public interface HostelRepository extends JpaRepository<Hostel, Long> {
     Optional<Hostel> findByName(String name);
+    java.util.List<Hostel> findByInstituteId(Long instituteId);
+    long countByInstituteId(Long instituteId);
 }

@@ -34,6 +34,14 @@ public class User {
     private AccountStatus status = AccountStatus.ACTIVE;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "institute_id")
+    private Institute institute;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "campus_id")
+    private Campus campus;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "hostel_id")
     private Hostel hostel;
 
@@ -43,6 +51,9 @@ public class User {
 
     @Column(name = "room_number", length = 20)
     private String roomNumber;
+
+    @Column(name = "needs_password_change")
+    private Boolean needsPasswordChange = false;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private ZonedDateTime createdAt = ZonedDateTime.now();
@@ -113,6 +124,15 @@ public class User {
 
     public ZonedDateTime getUpdatedAt() { return updatedAt; }
     public void setUpdatedAt(ZonedDateTime updatedAt) { this.updatedAt = updatedAt; }
+
+    public Institute getInstitute() { return institute; }
+    public void setInstitute(Institute institute) { this.institute = institute; }
+
+    public Campus getCampus() { return campus; }
+    public void setCampus(Campus campus) { this.campus = campus; }
+
+    public Boolean getNeedsPasswordChange() { return needsPasswordChange != null && needsPasswordChange; }
+    public void setNeedsPasswordChange(Boolean needsPasswordChange) { this.needsPasswordChange = needsPasswordChange; }
 
     public ZonedDateTime getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(ZonedDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }

@@ -18,10 +18,13 @@ public class UserPrincipal implements UserDetails {
     private final String password;
     private final Role role;
     private final AccountStatus status;
+    private final Long instituteId;
+    private final String instituteCode;
     private final Collection<? extends GrantedAuthority> authorities;
 
     public UserPrincipal(Long id, String fullName, String email, String institutionalId,
                          String password, Role role, AccountStatus status,
+                         Long instituteId, String instituteCode,
                          Collection<? extends GrantedAuthority> authorities) {
         this.id = id;
         this.fullName = fullName;
@@ -30,11 +33,16 @@ public class UserPrincipal implements UserDetails {
         this.password = password;
         this.role = role;
         this.status = status;
+        this.instituteId = instituteId;
+        this.instituteCode = instituteCode;
         this.authorities = authorities;
     }
 
     public static UserPrincipal create(User user) {
         GrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + user.getRole().name());
+        Long instId = user.getInstitute() != null ? user.getInstitute().getId() : null;
+        String instCode = user.getInstitute() != null ? user.getInstitute().getCode() : null;
+
         return new UserPrincipal(
                 user.getId(),
                 user.getFullName(),
@@ -43,6 +51,8 @@ public class UserPrincipal implements UserDetails {
                 user.getPasswordHash(),
                 user.getRole(),
                 user.getStatus(),
+                instId,
+                instCode,
                 Collections.singletonList(authority)
         );
     }
@@ -52,6 +62,8 @@ public class UserPrincipal implements UserDetails {
     public String getEmail() { return email; }
     public String getInstitutionalId() { return institutionalId; }
     public Role getRole() { return role; }
+    public Long getInstituteId() { return instituteId; }
+    public String getInstituteCode() { return instituteCode; }
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() { return authorities; }
