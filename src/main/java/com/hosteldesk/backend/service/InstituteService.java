@@ -316,7 +316,7 @@ public class InstituteService {
 
         String tempPassword = generateTempPassword();
         user.setPasswordHash(passwordEncoder.encode(tempPassword));
-        user.setNeedsPasswordChange(false);
+        user.setNeedsPasswordChange(true);
         userRepository.save(user);
 
         return new CredentialResponse(

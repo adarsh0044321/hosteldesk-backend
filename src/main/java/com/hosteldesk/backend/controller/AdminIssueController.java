@@ -18,6 +18,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -96,14 +97,30 @@ public class AdminIssueController {
     }
 
     @GetMapping("/staff")
-    public ResponseEntity<List<UserDto>> getStaffList() {
-        List<UserDto> staff = userRepository.findByRole(Role.MAINTENANCE_STAFF)
-                .stream().map(UserDto::fromEntity).collect(Collectors.toList());
-        return ResponseEntity.ok(staff);
+    public ResponseEntity<List<UserDto>> getStaffList(@AuthenticationPrincipal UserPrincipal principal) {
+        List<User> staffUsers = new ArrayList<>();
+        if (principal != null && principal.getInstituteId() != null) {
+            staffUsers.addAll(userRepository.findByInstituteIdAndRole(principal.getInstituteId(), Role.STAFF));
+            staffUsers.addAll(userRepository.findByInstituteIdAndRole(principal.getInstituteId(), Role.MAINTENANCE_STAFF));
+        } else {
+            staffUsers.addAll(userRepository.findByRole(Role.STAFF));
+            staffUsers.addAll(userRepository.findByRole(Role.MAINTENANCE_STAFF));
+        }
+        List<UserDto> dtos = staffUsers.stream()
+                .distinct()
+                .map(UserDto::fromEntity)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
     }
 
     @GetMapping("/departments")
-    public ResponseEntity<List<Department>> getDepartments() {
+    public ResponseEntity<List<Department>> getDepartments(@AuthenticationPrincipal UserPrincipal principal) {
+        if (principal != null && principal.getInstituteId() != null) {
+            List<Department> list = departmentRepository.findByInstituteId(principal.getInstituteId());
+            if (list != null && !list.isEmpty()) {
+                return ResponseEntity.ok(list);
+            }
+        }
         return ResponseEntity.ok(departmentRepository.findAll());
     }
 }

@@ -40,8 +40,11 @@ public class IssueDto {
         dto.setId(issue.getId());
         dto.setTicketNumber(issue.getTicketNumber());
         dto.setTitle(issue.getTitle());
-        dto.setDescription(issue.getDescription());
-        dto.setCategory(issue.getCategory());
+        String cat = issue.getCategory();
+        if (issue.getAssignedDepartment() != null) {
+            cat = issue.getAssignedDepartment().getName();
+        }
+        dto.setCategory(cat != null ? cat : "GENERAL");
         dto.setPriority(issue.getPriority());
         dto.setStatus(issue.getStatus());
         dto.setBlockName(issue.getBlockName());

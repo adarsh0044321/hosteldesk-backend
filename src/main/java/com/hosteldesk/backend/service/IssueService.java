@@ -143,6 +143,14 @@ public class IssueService {
         issue.setAiAnalysis(aiAnalysis);
 
         // Apply AI classification recommendations if confident
+        if (ai.getCategory() != null && !ai.getCategory().trim().isEmpty() &&
+            (issue.getCategory() == null || issue.getCategory().trim().isEmpty() ||
+             issue.getCategory().toLowerCase().contains("auto-detect") ||
+             issue.getCategory().equalsIgnoreCase("GENERAL") ||
+             issue.getCategory().equalsIgnoreCase("Plumbing"))) {
+            issue.setCategory(ai.getCategory());
+        }
+
         if (ai.getConfidence().doubleValue() > 0.80) {
             try {
                 issue.setPriority(IssuePriority.valueOf(ai.getPriority()));
@@ -159,6 +167,7 @@ public class IssueService {
         Department dept = routingService.resolveDepartmentForCategory(ai.getRecommendedDepartment());
         if (dept != null) {
             issue.setAssignedDepartment(dept);
+            issue.setCategory(dept.getName());
             issue.setStatus(IssueStatus.ASSIGNED);
 
             activityRepository.save(new IssueActivity(
@@ -273,7 +282,8 @@ public class IssueService {
         }
 
         issue.setAssignedDepartment(dept);
-        if (staff != null) issue.setAssignedStaff(staff);
+        issue.setAssignedStaff(staff);
+        issue.setCategory(dept.getName());
         if (request.getPriority() != null) issue.setPriority(request.getPriority());
         issue.setStatus(IssueStatus.ASSIGNED);
 
@@ -456,24 +466,38 @@ public class IssueService {
         User staff = userRepository.findById(staffId)
                 .orElseThrow(() -> new ResourceNotFoundException("Staff user not found: " + staffId));
 
-        if ("COMPLETED".equalsIgnoreCase(filter)) {
+        if ("COMPLETED".equalsIgnoreCase(filter) || "RESOLVED_HISTORY".equalsIgnoreCase(filter)) {
             return issueRepository.findByAssignedStaffIdAndStatus(staffId, IssueStatus.RESOLVED)
                     .stream().map(IssueDto::fromEntity).collect(Collectors.toList());
-        } else if ("QUEUE".equalsIgnoreCase(filter)) {
+        } else if ("QUEUE".equalsIgnoreCase(filter) || "DEPT_QUEUE".equalsIgnoreCase(filter)) {
             if (staff.getDepartment() != null) {
                 return issueRepository.findAll().stream()
                         .filter(i -> i.getAssignedDepartment() != null &&
                                      i.getAssignedDepartment().getId().equals(staff.getDepartment().getId()) &&
-                                     i.getAssignedStaff() == null &&
-                                     i.getStatus() != IssueStatus.RESOLVED)
+                                     i.getStatus() != IssueStatus.RESOLVED &&
+                                     i.getStatus() != IssueStatus.VERIFIED &&
+                                     i.getStatus() != IssueStatus.CANCELLED)
                         .map(IssueDto::fromEntity).collect(Collectors.toList());
             }
             return new ArrayList<>();
         } else {
             // Default: MY_WORK
-            List<IssueStatus> activeWork = Arrays.asList(IssueStatus.ASSIGNED, IssueStatus.IN_PROGRESS, IssueStatus.REOPENED);
-            return issueRepository.findByAssignedStaffIdAndStatusIn(staffId, activeWork)
-                    .stream().map(IssueDto::fromEntity).collect(Collectors.toList());
+            List<IssueStatus> activeWork = Arrays.asList(IssueStatus.ASSIGNED, IssueStatus.IN_PROGRESS, IssueStatus.REOPENED, IssueStatus.AWAITING_VERIFICATION);
+            List<Issue> directIssues = new ArrayList<>(issueRepository.findByAssignedStaffIdAndStatusIn(staffId, activeWork));
+            if (staff.getDepartment() != null) {
+                List<Issue> deptIssues = issueRepository.findAll().stream()
+                        .filter(i -> i.getAssignedDepartment() != null &&
+                                     i.getAssignedDepartment().getId().equals(staff.getDepartment().getId()) &&
+                                     i.getAssignedStaff() == null &&
+                                     activeWork.contains(i.getStatus()))
+                        .collect(Collectors.toList());
+                for (Issue di : deptIssues) {
+                    if (!directIssues.contains(di)) {
+                        directIssues.add(di);
+                    }
+                }
+            }
+            return directIssues.stream().map(IssueDto::fromEntity).collect(Collectors.toList());
         }
     }
 }
