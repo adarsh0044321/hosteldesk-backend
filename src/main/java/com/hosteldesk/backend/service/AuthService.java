@@ -98,6 +98,25 @@ public class AuthService {
         if ("STUDENT".equalsIgnoreCase(request.getTargetApp()) && user.getRole() != Role.STUDENT) {
             throw new ForbiddenException("Please use the HostelDesk Admin application to log in with administrative or staff credentials.");
         }
+        if ("WARDEN_PORTAL".equalsIgnoreCase(request.getTargetApp()) &&
+                (user.getRole() == Role.INSTITUTE_ADMIN || user.getRole() == Role.SUPER_ADMIN)) {
+            throw new ForbiddenException("Access Denied: Institute Administrators must sign in exclusively via the Executive Portal. Tap 'Executive Portal' below.");
+        }
+        if ("EXECUTIVE_PORTAL".equalsIgnoreCase(request.getTargetApp())) {
+            if (user.getRole() != Role.INSTITUTE_ADMIN && user.getRole() != Role.SUPER_ADMIN && user.getRole() != Role.ADMIN) {
+                throw new ForbiddenException("Access Denied: The Executive Portal requires Institute Administrator credentials.");
+            }
+            String reqPasscode = request.getSecurityPasscode();
+            if (reqPasscode == null || reqPasscode.trim().isEmpty()) {
+                throw new BadRequestException("Executive Security Passcode / PIN is required for Executive Portal login.");
+            }
+            String expected = (user.getInstitute() != null && user.getInstitute().getSecurityPasscode() != null)
+                    ? user.getInstitute().getSecurityPasscode().trim()
+                    : "112233";
+            if (!expected.equalsIgnoreCase(reqPasscode.trim())) {
+                throw new ForbiddenException("Invalid Executive Security Passcode / Secret PIN. Access Denied.");
+            }
+        }
 
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(user.getEmail(), request.getPassword())
@@ -128,6 +147,13 @@ public class AuthService {
             throw new BadRequestException("Administrator email is already registered: " + request.getAdminEmail());
         }
 
+        String passcode = request.getSecurityPasscode();
+        if (passcode == null || passcode.trim().isEmpty()) {
+            passcode = String.format("%06d", (int)(Math.random() * 900000) + 100000);
+        } else {
+            passcode = passcode.trim();
+        }
+
         Institute institute = new Institute();
         institute.setCode(code);
         institute.setName(request.getInstituteName());
@@ -135,6 +161,7 @@ public class AuthService {
         institute.setEmail(request.getInstituteEmail());
         institute.setContactNumber(request.getContactNumber() != null && !request.getContactNumber().trim().isEmpty() ? request.getContactNumber().trim() : "+91 11 2766 7722");
         institute.setStatus("ACTIVE");
+        institute.setSecurityPasscode(passcode);
         Institute savedInstitute = instituteRepository.save(institute);
 
         // Create default campus

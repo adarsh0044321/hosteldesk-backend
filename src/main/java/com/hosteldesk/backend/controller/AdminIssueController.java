@@ -63,13 +63,6 @@ public class AdminIssueController {
         Long instituteId = principal != null ? principal.getInstituteId() : null;
         Long hostelId = (principal != null && principal.getRole() == com.hosteldesk.backend.entity.Role.WARDEN) ? principal.getHostelId() : null;
 
-        IssueStatus issueStatus = null;
-        if (status != null && !status.isEmpty()) {
-            try {
-                issueStatus = IssueStatus.valueOf(status.toUpperCase());
-            } catch (Exception ignored) {}
-        }
-
         IssuePriority issuePriority = null;
         if (priority != null && !priority.isEmpty()) {
             try {
@@ -77,7 +70,7 @@ public class AdminIssueController {
             } catch (Exception ignored) {}
         }
 
-        return ResponseEntity.ok(issueService.searchAdminIssues(instituteId, hostelId, issueStatus, issuePriority, departmentId));
+        return ResponseEntity.ok(issueService.searchAdminIssues(instituteId, hostelId, status, issuePriority, departmentId));
     }
 
     @GetMapping("/issues/{id}")

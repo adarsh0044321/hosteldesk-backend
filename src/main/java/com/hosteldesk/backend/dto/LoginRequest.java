@@ -15,7 +15,10 @@ public class LoginRequest {
     @NotBlank(message = "Password is required")
     private String password;
 
-    private String targetApp; // "STUDENT" or "ADMIN"
+    @JsonAlias({"securityPasscode", "security_passcode", "secretPin", "secret_pin"})
+    private String securityPasscode;
+
+    private String targetApp; // "STUDENT" or "ADMIN" or "WARDEN_PORTAL" or "EXECUTIVE_PORTAL"
 
     public LoginRequest() {}
 
@@ -23,6 +26,15 @@ public class LoginRequest {
         this.emailOrInstitutionalId = emailOrInstitutionalId;
         this.email = emailOrInstitutionalId;
         this.password = password;
+        this.targetApp = targetApp;
+    }
+
+    public LoginRequest(String instituteCode, String emailOrInstitutionalId, String password, String securityPasscode, String targetApp) {
+        this.instituteCode = instituteCode;
+        this.emailOrInstitutionalId = emailOrInstitutionalId;
+        this.email = emailOrInstitutionalId;
+        this.password = password;
+        this.securityPasscode = securityPasscode;
         this.targetApp = targetApp;
     }
 
@@ -59,6 +71,9 @@ public class LoginRequest {
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
+
+    public String getSecurityPasscode() { return securityPasscode != null ? securityPasscode.trim() : null; }
+    public void setSecurityPasscode(String securityPasscode) { this.securityPasscode = securityPasscode; }
 
     public String getTargetApp() { return targetApp; }
     public void setTargetApp(String targetApp) { this.targetApp = targetApp; }

@@ -51,7 +51,7 @@ class IssueStateMachineTest {
 
         // Verify resolution with rating and worker review
         IssueDetailDto resolved = issueService.verifyResolution(hd1042.getId(), "Ceiling confirmed dry", 5, "Outstanding plumber work", student);
-        Assertions.assertEquals(IssueStatus.RESOLVED, resolved.getStatus());
+        Assertions.assertEquals(IssueStatus.VERIFIED, resolved.getStatus());
         Assertions.assertNotNull(resolved.getResolvedAt());
         Assertions.assertNotNull(resolved.getVerifiedAt());
         Assertions.assertEquals(5, resolved.getRating());

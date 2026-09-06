@@ -83,6 +83,10 @@ public class DataInitializer implements CommandLineRunner {
             defaultInstitute.setContactNumber("+91 11 2766 7722");
             instituteRepository.save(defaultInstitute);
         }
+        if (defaultInstitute.getSecurityPasscode() == null || defaultInstitute.getSecurityPasscode().isEmpty()) {
+            defaultInstitute.setSecurityPasscode("112233");
+            instituteRepository.save(defaultInstitute);
+        }
 
 
 
@@ -216,8 +220,21 @@ public class DataInitializer implements CommandLineRunner {
                             null, "JAI", "JAI Campus Institute",
                             "UNIVERSITY", "adminjai@campus.edu", "+91 98765 00001", "ACTIVE"
                     );
+                    inst.setSecurityPasscode("998877");
                     return instituteRepository.save(inst);
                 });
+        if (jaiInstitute.getSecurityPasscode() == null || jaiInstitute.getSecurityPasscode().isEmpty()) {
+            jaiInstitute.setSecurityPasscode("998877");
+            instituteRepository.save(jaiInstitute);
+        }
+
+        // Backfill any remaining institutes with default passcode
+        for (Institute inst : instituteRepository.findAll()) {
+            if (inst.getSecurityPasscode() == null || inst.getSecurityPasscode().isEmpty()) {
+                inst.setSecurityPasscode("112233");
+                instituteRepository.save(inst);
+            }
+        }
 
         Campus jaiCampus = campusRepository.findByInstituteId(jaiInstitute.getId()).stream()
                 .findFirst()

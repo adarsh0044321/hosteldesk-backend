@@ -34,6 +34,9 @@ public class Institute {
     @Column(name = "emergency_desk_contact", length = 30)
     private String emergencyDeskContact = "+91 11 2766 7722";
 
+    @Column(name = "security_passcode", length = 100)
+    private String securityPasscode = "112233";
+
     @Column(nullable = false, length = 20)
     private String status = "ACTIVE"; // ACTIVE, PENDING, SUSPENDED
 
@@ -81,6 +84,9 @@ public class Institute {
 
     public String getEmergencyDeskContact() { return emergencyDeskContact != null && !emergencyDeskContact.isEmpty() ? emergencyDeskContact : "+91 11 2766 7722"; }
     public void setEmergencyDeskContact(String emergencyDeskContact) { this.emergencyDeskContact = emergencyDeskContact; }
+
+    public String getSecurityPasscode() { return securityPasscode != null && !securityPasscode.isEmpty() ? securityPasscode : "112233"; }
+    public void setSecurityPasscode(String securityPasscode) { this.securityPasscode = securityPasscode; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

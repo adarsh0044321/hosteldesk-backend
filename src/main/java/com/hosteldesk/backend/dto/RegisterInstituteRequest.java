@@ -29,6 +29,9 @@ public class RegisterInstituteRequest {
     @Size(min = 6, message = "Password must be at least 6 characters")
     private String password;
 
+    @JsonAlias({"securityPasscode", "security_passcode", "secretPin", "secret_pin"})
+    private String securityPasscode;
+
     public RegisterInstituteRequest() {}
 
     public String getInstituteName() { return instituteName; }
@@ -57,4 +60,7 @@ public class RegisterInstituteRequest {
 
     public String getPassword() { return password; }
     public void setPassword(String password) { this.password = password; }
+
+    public String getSecurityPasscode() { return securityPasscode; }
+    public void setSecurityPasscode(String securityPasscode) { this.securityPasscode = securityPasscode; }
 }

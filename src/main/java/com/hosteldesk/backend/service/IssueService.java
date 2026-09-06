@@ -286,6 +286,41 @@ public class IssueService {
     }
 
     @Transactional(readOnly = true)
+    public List<IssueDto> searchAdminIssues(Long instituteId, Long hostelId, String statusFilter, IssuePriority priority, Long departmentId) {
+        if (statusFilter == null || statusFilter.trim().isEmpty() || statusFilter.equalsIgnoreCase("ALL")) {
+            return issueRepository.searchAdminIssues(instituteId, hostelId, null, priority, departmentId)
+                    .stream().map(IssueDto::fromEntity).collect(Collectors.toList());
+        }
+
+        String upper = statusFilter.trim().toUpperCase();
+        List<IssueStatus> statuses;
+        if (upper.equals("CLOSED")) {
+            statuses = List.of(IssueStatus.VERIFIED, IssueStatus.RESOLVED, IssueStatus.CANCELLED);
+        } else if (upper.equals("RESOLVED")) {
+            statuses = List.of(IssueStatus.RESOLVED, IssueStatus.VERIFIED);
+        } else if (upper.equals("AWAITING_VERIFICATION") || upper.equals("NEEDS_VERIFICATION")) {
+            statuses = List.of(IssueStatus.AWAITING_VERIFICATION);
+        } else if (upper.equals("SUBMITTED") || upper.equals("OPEN")) {
+            statuses = List.of(IssueStatus.REPORTED, IssueStatus.AI_ANALYZING, IssueStatus.ANALYZED, IssueStatus.ASSIGNED, IssueStatus.REOPENED);
+        } else if (upper.equals("IN_PROGRESS")) {
+            statuses = List.of(IssueStatus.IN_PROGRESS);
+        } else if (upper.equals("ASSIGNED")) {
+            statuses = List.of(IssueStatus.ASSIGNED);
+        } else {
+            try {
+                IssueStatus direct = IssueStatus.valueOf(upper);
+                statuses = List.of(direct);
+            } catch (Exception e) {
+                return issueRepository.searchAdminIssues(instituteId, hostelId, null, priority, departmentId)
+                        .stream().map(IssueDto::fromEntity).collect(Collectors.toList());
+            }
+        }
+
+        return issueRepository.searchAdminIssuesByStatuses(instituteId, hostelId, statuses, priority, departmentId)
+                .stream().map(IssueDto::fromEntity).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<IssueDto> searchAdminIssues(Long instituteId, Long hostelId, IssueStatus status, IssuePriority priority, Long departmentId) {
         return issueRepository.searchAdminIssues(instituteId, hostelId, status, priority, departmentId)
                 .stream().map(IssueDto::fromEntity).collect(Collectors.toList());
@@ -432,16 +467,30 @@ public class IssueService {
         Issue issue = issueRepository.findById(issueId)
                 .orElseThrow(() -> new ResourceNotFoundException("Issue not found: " + issueId));
 
-        if (!issue.getReportedBy().getId().equals(student.getId())) {
-            throw new ForbiddenException("Only the student who reported this issue can verify resolution.");
+        boolean isReporter = issue.getReportedBy() != null &&
+                (issue.getReportedBy().getId().equals(student.getId()) ||
+                 issue.getReportedBy().getEmail().equalsIgnoreCase(student.getEmail()));
+
+        if (!isReporter) {
+            boolean sameRoom = student.getRoomNumber() != null &&
+                    student.getRoomNumber().equalsIgnoreCase(issue.getRoomNumber()) &&
+                    student.getHostel() != null && issue.getHostel() != null &&
+                    student.getHostel().getId().equals(issue.getHostel().getId());
+            if (!sameRoom) {
+                throw new ForbiddenException("Only the resident who reported this issue can verify resolution.");
+            }
         }
 
-        if (issue.getStatus() != IssueStatus.AWAITING_VERIFICATION) {
-            throw new InvalidStateTransitionException(issue.getStatus(), IssueStatus.RESOLVED, "Issue is not awaiting verification.");
+        if (issue.getStatus() == IssueStatus.VERIFIED) {
+            return IssueDetailDto.fromEntity(issue);
         }
 
-        issue.setStatus(IssueStatus.RESOLVED);
-        issue.setResolvedAt(ZonedDateTime.now());
+        if (issue.getStatus() != IssueStatus.AWAITING_VERIFICATION && issue.getStatus() != IssueStatus.RESOLVED) {
+            throw new InvalidStateTransitionException(issue.getStatus(), IssueStatus.VERIFIED, "Cannot verify issue in status: " + issue.getStatus());
+        }
+
+        issue.setStatus(IssueStatus.VERIFIED);
+        issue.setResolvedAt(issue.getResolvedAt() != null ? issue.getResolvedAt() : ZonedDateTime.now());
         issue.setVerifiedAt(ZonedDateTime.now());
         issue.setResolutionNotes(satisfactionNote != null ? satisfactionNote : "Resolved and verified by resident.");
         if (rating != null && rating >= 1 && rating <= 5) {
@@ -482,11 +531,21 @@ public class IssueService {
         Issue issue = issueRepository.findById(issueId)
                 .orElseThrow(() -> new ResourceNotFoundException("Issue not found: " + issueId));
 
-        if (!issue.getReportedBy().getId().equals(student.getId())) {
-            throw new ForbiddenException("Only the student who reported this issue can reopen it.");
+        boolean isReporter = issue.getReportedBy() != null &&
+                (issue.getReportedBy().getId().equals(student.getId()) ||
+                 issue.getReportedBy().getEmail().equalsIgnoreCase(student.getEmail()));
+
+        if (!isReporter) {
+            boolean sameRoom = student.getRoomNumber() != null &&
+                    student.getRoomNumber().equalsIgnoreCase(issue.getRoomNumber()) &&
+                    student.getHostel() != null && issue.getHostel() != null &&
+                    student.getHostel().getId().equals(issue.getHostel().getId());
+            if (!sameRoom) {
+                throw new ForbiddenException("Only the resident who reported this issue can reopen it.");
+            }
         }
 
-        if (issue.getStatus() != IssueStatus.AWAITING_VERIFICATION && issue.getStatus() != IssueStatus.RESOLVED) {
+        if (issue.getStatus() != IssueStatus.AWAITING_VERIFICATION && issue.getStatus() != IssueStatus.RESOLVED && issue.getStatus() != IssueStatus.VERIFIED) {
             throw new InvalidStateTransitionException(issue.getStatus(), IssueStatus.REOPENED, "Cannot reopen issue in state: " + issue.getStatus());
         }
 

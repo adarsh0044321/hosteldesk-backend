@@ -61,6 +61,18 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
                                   @Param("priority") IssuePriority priority,
                                   @Param("departmentId") Long departmentId);
 
+    @Query("SELECT i FROM Issue i WHERE (:instituteId IS NULL OR i.institute.id = :instituteId) " +
+           "AND (:hostelId IS NULL OR i.hostel.id = :hostelId) " +
+           "AND (i.status IN (:statuses)) " +
+           "AND (:priority IS NULL OR i.priority = :priority) " +
+           "AND (:departmentId IS NULL OR i.assignedDepartment.id = :departmentId) " +
+           "ORDER BY i.createdAt DESC")
+    List<Issue> searchAdminIssuesByStatuses(@Param("instituteId") Long instituteId,
+                                            @Param("hostelId") Long hostelId,
+                                            @Param("statuses") List<IssueStatus> statuses,
+                                            @Param("priority") IssuePriority priority,
+                                            @Param("departmentId") Long departmentId);
+
     @Query("SELECT COUNT(i) FROM Issue i WHERE i.blockName = :blockName AND i.category = :category AND i.createdAt >= :since")
     long countComplaintsInBlockByCategorySince(@Param("blockName") String blockName,
                                               @Param("category") String category,
