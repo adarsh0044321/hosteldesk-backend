@@ -45,6 +45,8 @@ public class IssueDetailDto extends IssueDto {
 
         dto.setResolutionNotes(issue.getResolutionNotes());
         dto.setReopenReason(issue.getReopenReason());
+        dto.setRating(issue.getRating());
+        dto.setWorkerReview(issue.getWorkerReview());
 
         if (issue.getAiAnalysis() != null) {
             dto.setAiAnalysis(AiAnalysisDto.fromEntity(issue.getAiAnalysis()));

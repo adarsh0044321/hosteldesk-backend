@@ -29,6 +29,8 @@ public class IssueDto {
     private ZonedDateTime updatedAt;
     private ZonedDateTime resolvedAt;
     private ZonedDateTime verifiedAt;
+    private Integer rating;
+    private String workerReview;
     private Integer wardenViewCount = 0;
     private ZonedDateTime wardenViewedAt;
 
@@ -54,6 +56,8 @@ public class IssueDto {
         dto.setUpdatedAt(issue.getUpdatedAt());
         dto.setResolvedAt(issue.getResolvedAt());
         dto.setVerifiedAt(issue.getVerifiedAt());
+        dto.setRating(issue.getRating());
+        dto.setWorkerReview(issue.getWorkerReview());
         dto.setWardenViewCount(issue.getWardenViewCount());
         dto.setWardenViewedAt(issue.getWardenViewedAt());
 
@@ -147,6 +151,12 @@ public class IssueDto {
 
     public ZonedDateTime getVerifiedAt() { return verifiedAt; }
     public void setVerifiedAt(ZonedDateTime verifiedAt) { this.verifiedAt = verifiedAt; }
+
+    public Integer getRating() { return rating; }
+    public void setRating(Integer rating) { this.rating = rating; }
+
+    public String getWorkerReview() { return workerReview; }
+    public void setWorkerReview(String workerReview) { this.workerReview = workerReview; }
 
     public Integer getWardenViewCount() { return wardenViewCount != null ? wardenViewCount : 0; }
     public void setWardenViewCount(Integer wardenViewCount) { this.wardenViewCount = wardenViewCount; }

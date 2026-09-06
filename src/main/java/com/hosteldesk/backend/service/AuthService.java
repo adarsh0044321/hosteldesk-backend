@@ -296,5 +296,25 @@ public class AuthService {
                 institute.getStatus()
         );
     }
+
+    @Transactional
+    public UserDto updateProfile(Long userId, UpdateProfileRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+
+        if (request.getFullName() != null && !request.getFullName().trim().isEmpty()) {
+            user.setFullName(request.getFullName().trim());
+        }
+        if (request.getPhone() != null) {
+            user.setPhone(request.getPhone().trim());
+        }
+        if (request.getRoomNumber() != null) {
+            user.setRoomNumber(request.getRoomNumber().trim());
+        }
+
+        user = userRepository.save(user);
+        return UserDto.fromEntity(user);
+    }
 }
+
 

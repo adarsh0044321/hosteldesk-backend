@@ -18,6 +18,14 @@ public class CreateAnnouncementRequest {
 
     public CreateAnnouncementRequest() {}
 
+    public CreateAnnouncementRequest(String title, String content, Long hostelId, Integer durationHours, Boolean pinned) {
+        this.title = title;
+        this.content = content;
+        this.hostelId = hostelId;
+        this.durationHours = durationHours;
+        this.pinned = pinned;
+    }
+
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
 

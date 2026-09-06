@@ -71,6 +71,12 @@ public class Issue {
     @Column(name = "reopen_reason", columnDefinition = "TEXT")
     private String reopenReason;
 
+    @Column(name = "rating")
+    private Integer rating;
+
+    @Column(name = "worker_review", columnDefinition = "TEXT")
+    private String workerReview;
+
     @OneToOne(mappedBy = "issue", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private IssueAiAnalysis aiAnalysis;
 
@@ -158,6 +164,12 @@ public class Issue {
 
     public String getReopenReason() { return reopenReason; }
     public void setReopenReason(String reopenReason) { this.reopenReason = reopenReason; }
+
+    public Integer getRating() { return rating; }
+    public void setRating(Integer rating) { this.rating = rating; }
+
+    public String getWorkerReview() { return workerReview; }
+    public void setWorkerReview(String workerReview) { this.workerReview = workerReview; }
 
     public IssueAiAnalysis getAiAnalysis() { return aiAnalysis; }
     public void setAiAnalysis(IssueAiAnalysis aiAnalysis) { this.aiAnalysis = aiAnalysis; }

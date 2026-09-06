@@ -2,6 +2,8 @@ package com.hosteldesk.backend;
 
 import com.hosteldesk.backend.dto.AssignIssueRequest;
 import com.hosteldesk.backend.dto.IssueDetailDto;
+import com.hosteldesk.backend.dto.IssueDto;
+import java.util.List;
 import com.hosteldesk.backend.entity.IssuePriority;
 import com.hosteldesk.backend.entity.IssueStatus;
 import com.hosteldesk.backend.entity.Role;
@@ -43,12 +45,19 @@ class IssueStateMachineTest {
                 .map(i -> issueService.getIssueDetail(i.getId(), com.hosteldesk.backend.security.UserPrincipal.create(student)))
                 .orElseThrow();
 
-        // Verify resolution
-        IssueDetailDto resolved = issueService.verifyResolution(hd1042.getId(), "Ceiling confirmed dry", student);
+        // Check getStudentIssuesByFilter
+        List<IssueDto> awaitingList = issueService.getStudentIssuesByFilter(student.getId(), "AWAITING_VERIFICATION");
+        Assertions.assertFalse(awaitingList.isEmpty(), "Should return awaiting verification issues");
+
+        // Verify resolution with rating and worker review
+        IssueDetailDto resolved = issueService.verifyResolution(hd1042.getId(), "Ceiling confirmed dry", 5, "Outstanding plumber work", student);
         Assertions.assertEquals(IssueStatus.RESOLVED, resolved.getStatus());
         Assertions.assertNotNull(resolved.getResolvedAt());
         Assertions.assertNotNull(resolved.getVerifiedAt());
+        Assertions.assertEquals(5, resolved.getRating());
+        Assertions.assertEquals("Outstanding plumber work", resolved.getWorkerReview());
     }
+
 
     @Test
     @Transactional

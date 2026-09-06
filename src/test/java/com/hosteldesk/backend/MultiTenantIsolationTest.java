@@ -80,7 +80,7 @@ public class MultiTenantIsolationTest {
 
         Assertions.assertNotNull(resetRes.getTemporaryPassword());
         User updatedStudent = userRepository.findByInstitutionalId("ST-8819").orElseThrow();
-        Assertions.assertFalse(updatedStudent.getNeedsPasswordChange());
+        Assertions.assertTrue(updatedStudent.getNeedsPasswordChange());
 
         // 3. Student logs in with temporary password
         LoginRequest tempLogin = new LoginRequest();
@@ -90,7 +90,7 @@ public class MultiTenantIsolationTest {
 
         LoginResponse tempLoginRes = authService.login(tempLogin);
         Assertions.assertNotNull(tempLoginRes.getToken());
-        Assertions.assertFalse(tempLoginRes.getUser().getNeedsPasswordChange());
+        Assertions.assertTrue(tempLoginRes.getUser().getNeedsPasswordChange());
 
         // 4. Student changes password to permanent password
         ChangePasswordRequest changeReq = new ChangePasswordRequest(resetRes.getTemporaryPassword(), "NewPermanentPass#123");

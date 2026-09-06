@@ -137,8 +137,8 @@ public class User {
     public String getBatch() { return batch; }
     public void setBatch(String batch) { this.batch = batch; }
 
-    public Boolean getNeedsPasswordChange() { return false; }
-    public void setNeedsPasswordChange(Boolean needsPasswordChange) { this.needsPasswordChange = false; }
+    public Boolean getNeedsPasswordChange() { return needsPasswordChange != null && needsPasswordChange; }
+    public void setNeedsPasswordChange(Boolean needsPasswordChange) { this.needsPasswordChange = needsPasswordChange; }
 
     public ZonedDateTime getLastLoginAt() { return lastLoginAt; }
     public void setLastLoginAt(ZonedDateTime lastLoginAt) { this.lastLoginAt = lastLoginAt; }

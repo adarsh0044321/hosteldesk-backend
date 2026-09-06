@@ -221,6 +221,41 @@ public class IssueService {
         return issues.stream().map(IssueDto::fromEntity).collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public List<IssueDto> getStudentIssuesByFilter(Long studentId, String filter) {
+        if (filter == null || filter.trim().isEmpty() || filter.equalsIgnoreCase("ALL")) {
+            return getStudentIssues(studentId, null);
+        }
+        String upper = filter.trim().toUpperCase();
+        if (upper.equals("AWAITING_VERIFICATION") || upper.equals("NEEDS_VERIFICATION")) {
+            return getStudentIssues(studentId, IssueStatus.AWAITING_VERIFICATION);
+        } else if (upper.equals("OPEN") || upper.equals("SUBMITTED")) {
+            List<IssueStatus> openStatuses = List.of(
+                    IssueStatus.REPORTED, IssueStatus.AI_ANALYZING,
+                    IssueStatus.ANALYZED, IssueStatus.ASSIGNED, IssueStatus.REOPENED
+            );
+            List<Issue> issues = issueRepository.findByReportedByIdAndStatusInOrderByCreatedAtDesc(studentId, openStatuses);
+            return issues.stream().map(IssueDto::fromEntity).collect(Collectors.toList());
+        } else if (upper.equals("IN_PROGRESS")) {
+            return getStudentIssues(studentId, IssueStatus.IN_PROGRESS);
+        } else if (upper.equals("RESOLVED")) {
+            List<IssueStatus> resolvedStatuses = List.of(IssueStatus.RESOLVED, IssueStatus.VERIFIED);
+            List<Issue> issues = issueRepository.findByReportedByIdAndStatusInOrderByCreatedAtDesc(studentId, resolvedStatuses);
+            return issues.stream().map(IssueDto::fromEntity).collect(Collectors.toList());
+        } else if (upper.equals("CLOSED")) {
+            List<IssueStatus> closedStatuses = List.of(IssueStatus.RESOLVED, IssueStatus.VERIFIED, IssueStatus.CANCELLED);
+            List<Issue> issues = issueRepository.findByReportedByIdAndStatusInOrderByCreatedAtDesc(studentId, closedStatuses);
+            return issues.stream().map(IssueDto::fromEntity).collect(Collectors.toList());
+        } else {
+            try {
+                IssueStatus directStatus = IssueStatus.valueOf(upper);
+                return getStudentIssues(studentId, directStatus);
+            } catch (Exception e) {
+                return getStudentIssues(studentId, null);
+            }
+        }
+    }
+
     @Transactional
     public IssueDetailDto getIssueDetail(Long issueId, UserPrincipal principal) {
         Issue issue = issueRepository.findById(issueId)
@@ -389,6 +424,11 @@ public class IssueService {
 
     @Transactional
     public IssueDetailDto verifyResolution(Long issueId, String satisfactionNote, User student) {
+        return verifyResolution(issueId, satisfactionNote, null, null, student);
+    }
+
+    @Transactional
+    public IssueDetailDto verifyResolution(Long issueId, String satisfactionNote, Integer rating, String workerReview, User student) {
         Issue issue = issueRepository.findById(issueId)
                 .orElseThrow(() -> new ResourceNotFoundException("Issue not found: " + issueId));
 
@@ -404,22 +444,38 @@ public class IssueService {
         issue.setResolvedAt(ZonedDateTime.now());
         issue.setVerifiedAt(ZonedDateTime.now());
         issue.setResolutionNotes(satisfactionNote != null ? satisfactionNote : "Resolved and verified by resident.");
+        if (rating != null && rating >= 1 && rating <= 5) {
+            issue.setRating(rating);
+        }
+        if (workerReview != null && !workerReview.trim().isEmpty()) {
+            issue.setWorkerReview(workerReview.trim());
+        }
+
+        String activityMsg = "Resident verified resolution. Issue closed.";
+        if (issue.getRating() != null) {
+            activityMsg += " Rated " + issue.getRating() + "★" + (issue.getWorkerReview() != null ? ": \"" + issue.getWorkerReview() + "\"" : "");
+        }
 
         activityRepository.save(new IssueActivity(
-                null, issue, student, "VERIFIED", "Resident verified resolution. Issue closed."
+                null, issue, student, "VERIFIED", activityMsg
         ));
         issue = issueRepository.save(issue);
 
         if (issue.getAssignedStaff() != null) {
+            String staffNotifMsg = "Student confirmed resolution for #" + issue.getTicketNumber();
+            if (issue.getRating() != null) {
+                staffNotifMsg += " (" + issue.getRating() + "★ Rating)";
+            }
             notificationService.createNotification(
                     issue.getAssignedStaff(), "Ticket Verified by Student",
-                    "Student confirmed resolution for #" + issue.getTicketNumber(),
+                    staffNotifMsg,
                     "ISSUE_RESOLVED", issue
             );
         }
 
         return IssueDetailDto.fromEntity(issue);
     }
+
 
     @Transactional
     public IssueDetailDto reopenIssue(Long issueId, String reason, User student) {

@@ -72,4 +72,23 @@ public class AnnouncementController {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(announcementService.createAnnouncement(instituteId, author, request));
     }
+
+    @PutMapping({"/admin/announcements/{id}", "/announcements/{id}"})
+    @PreAuthorize("hasAnyRole('WARDEN', 'ADMIN', 'INSTITUTE_ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<AnnouncementDto> updateAnnouncement(
+            @PathVariable("id") Long id,
+            @AuthenticationPrincipal UserPrincipal principal,
+            @Valid @RequestBody CreateAnnouncementRequest request) {
+        return ResponseEntity.ok(announcementService.updateAnnouncement(id, request, principal));
+    }
+
+    @DeleteMapping({"/admin/announcements/{id}", "/announcements/{id}"})
+    @PreAuthorize("hasAnyRole('WARDEN', 'ADMIN', 'INSTITUTE_ADMIN', 'SUPER_ADMIN')")
+    public ResponseEntity<Void> deleteAnnouncement(
+            @PathVariable("id") Long id,
+            @AuthenticationPrincipal UserPrincipal principal) {
+        announcementService.deleteAnnouncement(id, principal);
+        return ResponseEntity.noContent().build();
+    }
 }
+

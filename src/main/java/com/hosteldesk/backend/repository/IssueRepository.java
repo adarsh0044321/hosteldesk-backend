@@ -22,6 +22,7 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
     List<Issue> findByReportedByIdOrderByCreatedAtDesc(Long studentId);
     Page<Issue> findByReportedByIdOrderByCreatedAtDesc(Long studentId, Pageable pageable);
     List<Issue> findByReportedByIdAndStatus(Long studentId, IssueStatus status);
+    List<Issue> findByReportedByIdAndStatusInOrderByCreatedAtDesc(Long studentId, List<IssueStatus> statuses);
     long countByReportedByIdAndStatusIn(Long studentId, List<IssueStatus> statuses);
 
     List<Issue> findByAssignedStaffIdOrderByCreatedAtDesc(Long staffId);

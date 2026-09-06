@@ -70,4 +70,16 @@ public class AuthController {
         authService.changePassword(principal.getId(), request);
         return ResponseEntity.ok(Map.of("message", "Password changed successfully."));
     }
+
+    @PutMapping("/profile")
+    public ResponseEntity<UserDto> updateProfile(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @RequestBody UpdateProfileRequest request) {
+        if (principal == null) {
+            return ResponseEntity.status(401).build();
+        }
+        UserDto updated = authService.updateProfile(principal.getId(), request);
+        return ResponseEntity.ok(updated);
+    }
 }
+

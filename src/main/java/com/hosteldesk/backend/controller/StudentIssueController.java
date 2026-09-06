@@ -90,14 +90,7 @@ public class StudentIssueController {
             @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(value = "status", required = false) String status) {
 
-        IssueStatus issueStatus = null;
-        if (status != null && !status.isEmpty()) {
-            try {
-                issueStatus = IssueStatus.valueOf(status.toUpperCase());
-            } catch (Exception ignored) {}
-        }
-
-        return ResponseEntity.ok(issueService.getStudentIssues(principal.getId(), issueStatus));
+        return ResponseEntity.ok(issueService.getStudentIssuesByFilter(principal.getId(), status));
     }
 
     @GetMapping("/issues/{id}")
@@ -116,9 +109,12 @@ public class StudentIssueController {
         User student = userRepository.findById(principal.getId())
                 .orElseThrow(() -> new ResourceNotFoundException("Student not found"));
 
-        String note = request != null ? request.getSatisfactionNote() : "Confirmed fixed by resident";
-        return ResponseEntity.ok(issueService.verifyResolution(id, note, student));
+        String note = request != null && request.getSatisfactionNote() != null ? request.getSatisfactionNote() : "Confirmed fixed by resident";
+        Integer rating = request != null ? request.getRating() : null;
+        String workerReview = request != null ? request.getWorkerReview() : null;
+        return ResponseEntity.ok(issueService.verifyResolution(id, note, rating, workerReview, student));
     }
+
 
     @PostMapping("/issues/{id}/reopen")
     public ResponseEntity<IssueDetailDto> reopenIssue(

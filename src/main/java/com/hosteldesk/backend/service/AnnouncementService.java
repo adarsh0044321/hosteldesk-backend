@@ -4,11 +4,13 @@ import com.hosteldesk.backend.dto.AnnouncementDto;
 import com.hosteldesk.backend.dto.CreateAnnouncementRequest;
 import com.hosteldesk.backend.entity.*;
 import com.hosteldesk.backend.exception.BadRequestException;
+import com.hosteldesk.backend.exception.ForbiddenException;
 import com.hosteldesk.backend.exception.ResourceNotFoundException;
 import com.hosteldesk.backend.repository.AnnouncementRepository;
 import com.hosteldesk.backend.repository.HostelRepository;
 import com.hosteldesk.backend.repository.InstituteRepository;
 import com.hosteldesk.backend.repository.UserRepository;
+import com.hosteldesk.backend.security.UserPrincipal;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -53,7 +55,7 @@ public class AnnouncementService {
         if (instituteId == null) {
             return java.util.Collections.emptyList();
         }
-        return announcementRepository.findActiveForInstitute(instituteId, ZonedDateTime.now())
+        return announcementRepository.findByInstituteIdOrderByCreatedAtDesc(instituteId)
                 .stream()
                 .map(AnnouncementDto::fromEntity)
                 .collect(Collectors.toList());
@@ -116,4 +118,74 @@ public class AnnouncementService {
 
         return AnnouncementDto.fromEntity(announcement);
     }
+
+    @Transactional
+    public AnnouncementDto updateAnnouncement(Long id, CreateAnnouncementRequest request, UserPrincipal principal) {
+        Announcement announcement = announcementRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Announcement not found: " + id));
+
+        boolean isInstituteAdmin = principal.getRole() == Role.INSTITUTE_ADMIN ||
+                principal.getRole() == Role.SUPER_ADMIN ||
+                principal.getRole() == Role.ADMIN;
+
+        if (!isInstituteAdmin) {
+            // Warden user
+            if ("INSTITUTE_ADMIN".equalsIgnoreCase(announcement.getAuthorRole()) || announcement.getHostel() == null) {
+                throw new ForbiddenException("Wardens cannot modify institutional announcements posted by Institute Administration.");
+            }
+            if (announcement.getAuthor() != null && !announcement.getAuthor().getId().equals(principal.getId())) {
+                if (principal.getHostelId() == null || announcement.getHostel() == null ||
+                        !principal.getHostelId().equals(announcement.getHostel().getId())) {
+                    throw new ForbiddenException("You can only modify announcements posted for your hostel.");
+                }
+            }
+        }
+
+        if (request.getTitle() != null && !request.getTitle().trim().isEmpty()) {
+            announcement.setTitle(request.getTitle().trim());
+        }
+        if (request.getContent() != null && !request.getContent().trim().isEmpty()) {
+            announcement.setContent(request.getContent().trim());
+        }
+        if (request.getPinned() != null) {
+            announcement.setPinned(request.getPinned());
+        }
+
+        if (request.getDurationHours() != null) {
+            if (request.getDurationHours() > 0) {
+                announcement.setExpiresAt(ZonedDateTime.now().plusHours(request.getDurationHours()));
+            } else {
+                announcement.setExpiresAt(null);
+            }
+        }
+
+        announcement = announcementRepository.save(announcement);
+        return AnnouncementDto.fromEntity(announcement);
+    }
+
+    @Transactional
+    public void deleteAnnouncement(Long id, UserPrincipal principal) {
+        Announcement announcement = announcementRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Announcement not found: " + id));
+
+        boolean isInstituteAdmin = principal.getRole() == Role.INSTITUTE_ADMIN ||
+                principal.getRole() == Role.SUPER_ADMIN ||
+                principal.getRole() == Role.ADMIN;
+
+        if (!isInstituteAdmin) {
+            // Warden user
+            if ("INSTITUTE_ADMIN".equalsIgnoreCase(announcement.getAuthorRole()) || announcement.getHostel() == null) {
+                throw new ForbiddenException("Wardens cannot delete institutional announcements posted by Institute Administration.");
+            }
+            if (announcement.getAuthor() != null && !announcement.getAuthor().getId().equals(principal.getId())) {
+                if (principal.getHostelId() == null || announcement.getHostel() == null ||
+                        !principal.getHostelId().equals(announcement.getHostel().getId())) {
+                    throw new ForbiddenException("You can only delete announcements posted for your hostel.");
+                }
+            }
+        }
+
+        announcementRepository.delete(announcement);
+    }
 }
+
