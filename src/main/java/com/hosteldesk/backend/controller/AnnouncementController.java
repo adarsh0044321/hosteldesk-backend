@@ -40,7 +40,7 @@ public class AnnouncementController {
         return ResponseEntity.ok(announcementService.getStudentAnnouncements(instituteId, hostelId));
     }
 
-    @GetMapping("/admin/announcements")
+    @GetMapping({"/admin/announcements", "/institute/announcements"})
     @PreAuthorize("hasAnyRole('WARDEN', 'ADMIN', 'INSTITUTE_ADMIN', 'SUPER_ADMIN')")
     public ResponseEntity<List<AnnouncementDto>> getAdminAnnouncements(@AuthenticationPrincipal UserPrincipal principal) {
         Long instituteId = principal.getInstituteId();
