@@ -47,12 +47,12 @@ public class AnalyticsService {
 
         List<Issue> activeIssues = issueRepository.findByReportedByIdOrderByCreatedAtDesc(student.getId())
                 .stream()
-                .filter(i -> i.getStatus() != IssueStatus.RESOLVED)
+                .filter(i -> i.getStatus() != IssueStatus.RESOLVED && i.getStatus() != IssueStatus.VERIFIED && i.getStatus() != IssueStatus.CANCELLED)
                 .collect(Collectors.toList());
 
         long resolvedCount = issueRepository.findByReportedByIdOrderByCreatedAtDesc(student.getId())
                 .stream()
-                .filter(i -> i.getStatus() == IssueStatus.RESOLVED)
+                .filter(i -> i.getStatus() == IssueStatus.RESOLVED || i.getStatus() == IssueStatus.VERIFIED)
                 .count();
 
         long pendingVerificationCount = activeIssues.stream()
@@ -98,13 +98,13 @@ public class AnalyticsService {
             totalOpen = issueRepository.countByHostelIdAndStatusIn(hostelId, activeStatuses);
             inWork = issueRepository.countByHostelIdAndStatus(hostelId, IssueStatus.IN_PROGRESS);
             pendingCheck = issueRepository.countByHostelIdAndStatus(hostelId, IssueStatus.AWAITING_VERIFICATION);
-            resolved = issueRepository.countByHostelIdAndStatus(hostelId, IssueStatus.RESOLVED);
+            resolved = issueRepository.countByHostelIdAndStatusIn(hostelId, List.of(IssueStatus.RESOLVED, IssueStatus.VERIFIED));
             urgentP1 = issueRepository.countByHostelIdAndPriority(hostelId, IssuePriority.P1_URGENT);
         } else if (instituteId != null) {
             totalOpen = issueRepository.countByInstituteIdAndStatusIn(instituteId, activeStatuses);
             inWork = issueRepository.countByInstituteIdAndStatus(instituteId, IssueStatus.IN_PROGRESS);
             pendingCheck = issueRepository.countByInstituteIdAndStatus(instituteId, IssueStatus.AWAITING_VERIFICATION);
-            resolved = issueRepository.countByInstituteIdAndStatus(instituteId, IssueStatus.RESOLVED);
+            resolved = issueRepository.countByInstituteIdAndStatusIn(instituteId, List.of(IssueStatus.RESOLVED, IssueStatus.VERIFIED));
             urgentP1 = issueRepository.countByInstituteIdAndPriority(instituteId, IssuePriority.P1_URGENT);
         } else {
             totalOpen = 0;
@@ -138,7 +138,7 @@ public class AnalyticsService {
 
         List<IssueDto> attention = sourceList.stream()
                 .filter(i -> (i.getPriority() == IssuePriority.P1_URGENT || i.getStatus() == IssueStatus.REPORTED || i.getStatus() == IssueStatus.REOPENED)
-                        && i.getStatus() != IssueStatus.RESOLVED)
+                        && i.getStatus() != IssueStatus.RESOLVED && i.getStatus() != IssueStatus.VERIFIED && i.getStatus() != IssueStatus.CANCELLED)
                 .sorted(Comparator.comparing(Issue::getCreatedAt).reversed())
                 .limit(5)
                 .map(IssueDto::fromEntity)

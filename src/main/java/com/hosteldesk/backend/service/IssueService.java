@@ -239,7 +239,7 @@ public class IssueService {
         } else if (upper.equals("IN_PROGRESS")) {
             return getStudentIssues(studentId, IssueStatus.IN_PROGRESS);
         } else if (upper.equals("RESOLVED")) {
-            List<IssueStatus> resolvedStatuses = List.of(IssueStatus.RESOLVED, IssueStatus.VERIFIED);
+            List<IssueStatus> resolvedStatuses = List.of(IssueStatus.RESOLVED, IssueStatus.VERIFIED, IssueStatus.AWAITING_VERIFICATION);
             List<Issue> issues = issueRepository.findByReportedByIdAndStatusInOrderByCreatedAtDesc(studentId, resolvedStatuses);
             return issues.stream().map(IssueDto::fromEntity).collect(Collectors.toList());
         } else if (upper.equals("CLOSED")) {
@@ -297,7 +297,7 @@ public class IssueService {
         if (upper.equals("CLOSED")) {
             statuses = List.of(IssueStatus.VERIFIED, IssueStatus.RESOLVED, IssueStatus.CANCELLED);
         } else if (upper.equals("RESOLVED")) {
-            statuses = List.of(IssueStatus.RESOLVED, IssueStatus.VERIFIED);
+            statuses = List.of(IssueStatus.RESOLVED, IssueStatus.VERIFIED, IssueStatus.AWAITING_VERIFICATION);
         } else if (upper.equals("AWAITING_VERIFICATION") || upper.equals("NEEDS_VERIFICATION")) {
             statuses = List.of(IssueStatus.AWAITING_VERIFICATION);
         } else if (upper.equals("SUBMITTED") || upper.equals("OPEN")) {
@@ -424,8 +424,8 @@ public class IssueService {
         Issue issue = issueRepository.findById(issueId)
                 .orElseThrow(() -> new ResourceNotFoundException("Issue not found: " + issueId));
 
-        if (issue.getStatus() != IssueStatus.IN_PROGRESS) {
-            throw new InvalidStateTransitionException(issue.getStatus(), IssueStatus.AWAITING_VERIFICATION, "Can only complete issues currently IN_PROGRESS.");
+        if (issue.getStatus() != IssueStatus.IN_PROGRESS && issue.getStatus() != IssueStatus.ASSIGNED && issue.getStatus() != IssueStatus.REOPENED) {
+            throw new InvalidStateTransitionException(issue.getStatus(), IssueStatus.AWAITING_VERIFICATION, "Can only complete issues currently ASSIGNED, IN_PROGRESS, or REOPENED.");
         }
 
         if (proofPhoto != null && !proofPhoto.isEmpty()) {
@@ -492,6 +492,7 @@ public class IssueService {
         issue.setStatus(IssueStatus.VERIFIED);
         issue.setResolvedAt(issue.getResolvedAt() != null ? issue.getResolvedAt() : ZonedDateTime.now());
         issue.setVerifiedAt(ZonedDateTime.now());
+        issue.setReopenReason(null);
         issue.setResolutionNotes(satisfactionNote != null ? satisfactionNote : "Resolved and verified by resident.");
         if (rating != null && rating >= 1 && rating <= 5) {
             issue.setRating(rating);
@@ -551,6 +552,8 @@ public class IssueService {
 
         issue.setStatus(IssueStatus.REOPENED);
         issue.setReopenReason(reason);
+        issue.setVerifiedAt(null);
+        issue.setResolvedAt(null);
 
         activityRepository.save(new IssueActivity(
                 null, issue, student, "REOPENED", "Resident rejected resolution: " + reason
@@ -582,7 +585,7 @@ public class IssueService {
                 .orElseThrow(() -> new ResourceNotFoundException("Staff user not found: " + staffId));
 
         if ("COMPLETED".equalsIgnoreCase(filter) || "RESOLVED_HISTORY".equalsIgnoreCase(filter)) {
-            return issueRepository.findByAssignedStaffIdAndStatus(staffId, IssueStatus.RESOLVED)
+            return issueRepository.findByAssignedStaffIdAndStatusIn(staffId, List.of(IssueStatus.RESOLVED, IssueStatus.VERIFIED))
                     .stream().map(IssueDto::fromEntity).collect(Collectors.toList());
         } else if ("QUEUE".equalsIgnoreCase(filter) || "DEPT_QUEUE".equalsIgnoreCase(filter)) {
             if (staff.getDepartment() != null) {
