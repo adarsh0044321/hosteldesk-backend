@@ -48,6 +48,11 @@ public class NotificationService {
         notificationRepository.save(notification);
     }
 
+    @Transactional
+    public void markAllAsRead(Long userId) {
+        notificationRepository.markAllAsReadForUser(userId);
+    }
+
     @Transactional(readOnly = true)
     public long getUnreadCount(Long userId) {
         return notificationRepository.countByUserIdAndIsReadFalse(userId);

@@ -27,6 +27,8 @@ public interface IssueRepository extends JpaRepository<Issue, Long> {
     List<Issue> findByAssignedStaffIdOrderByCreatedAtDesc(Long staffId);
     List<Issue> findByAssignedStaffIdAndStatus(Long staffId, IssueStatus status);
     List<Issue> findByAssignedStaffIdAndStatusIn(Long staffId, List<IssueStatus> statuses);
+    long countByAssignedStaffIdAndStatusIn(Long staffId, List<IssueStatus> statuses);
+    long countByAssignedStaffId(Long staffId);
 
     List<Issue> findByHostelIdOrderByCreatedAtDesc(Long hostelId);
     List<Issue> findByStatusOrderByCreatedAtDesc(IssueStatus status);

@@ -33,6 +33,12 @@ public class NotificationController {
         return ResponseEntity.ok(Map.of("message", "Marked as read"));
     }
 
+    @PutMapping("/read-all")
+    public ResponseEntity<Map<String, String>> markAllAsRead(@AuthenticationPrincipal UserPrincipal principal) {
+        notificationService.markAllAsRead(principal.getId());
+        return ResponseEntity.ok(Map.of("message", "All notifications marked as read"));
+    }
+
     @GetMapping("/unread-count")
     public ResponseEntity<Map<String, Long>> getUnreadCount(@AuthenticationPrincipal UserPrincipal principal) {
         return ResponseEntity.ok(Map.of("unreadCount", notificationService.getUnreadCount(principal.getId())));

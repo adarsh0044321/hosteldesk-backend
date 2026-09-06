@@ -31,15 +31,18 @@ public class AdminIssueController {
     private final AnalyticsService analyticsService;
     private final UserRepository userRepository;
     private final DepartmentRepository departmentRepository;
+    private final com.hosteldesk.backend.repository.IssueRepository issueRepository;
 
     public AdminIssueController(IssueService issueService,
                                 AnalyticsService analyticsService,
                                 UserRepository userRepository,
-                                DepartmentRepository departmentRepository) {
+                                DepartmentRepository departmentRepository,
+                                com.hosteldesk.backend.repository.IssueRepository issueRepository) {
         this.issueService = issueService;
         this.analyticsService = analyticsService;
         this.userRepository = userRepository;
         this.departmentRepository = departmentRepository;
+        this.issueRepository = issueRepository;
     }
 
     @GetMapping("/dashboard")
@@ -108,7 +111,19 @@ public class AdminIssueController {
         }
         List<UserDto> dtos = staffUsers.stream()
                 .distinct()
-                .map(UserDto::fromEntity)
+                .map(u -> {
+                    UserDto dto = UserDto.fromEntity(u);
+                    try {
+                        long active = issueRepository.countByAssignedStaffIdAndStatusIn(
+                                u.getId(),
+                                List.of(IssueStatus.ASSIGNED, IssueStatus.IN_PROGRESS)
+                        );
+                        long total = issueRepository.countByAssignedStaffId(u.getId());
+                        dto.setActiveComplaints(active);
+                        dto.setTotalComplaints(total);
+                    } catch (Exception ignored) {}
+                    return dto;
+                })
                 .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }
